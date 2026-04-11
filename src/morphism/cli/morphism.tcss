@@ -1,0 +1,191 @@
+/* morphism.tcss – Ultra-Modern Minimalist Dark
+ *
+ * Palette:
+ *   bg:       #0d1117   (Deep GitHub dark)
+ *   surface:  #161b22   (Pane surfaces)
+ *   raised:   #21262d   (Command palette / inputs)
+ *   border:   #30363d   (Hairline separators, scrollbar)
+ *   accent:   #58a6ff   (Focus / highlight blue)
+ *   text:     #e6edf3   (Foreground)
+ *   dim:      #7d8590   (Secondary text)
+ *   success:  #3fb950   (Green)
+ *   error:    #f85149   (Red)
+ */
+
+/* ── Reset: kill ugly scrollbars globally ─────────────────────────── */
+
+* {
+    scrollbar-background: transparent;
+    scrollbar-color: #30363d;
+    scrollbar-size: 1 1;
+}
+
+/* ── Global ───────────────────────────────────────────────────────── */
+
+Screen {
+    background: #0d1117;
+    color: #e6edf3;
+}
+
+/* Flat focus — thin accent underline, no heavy double borders */
+*:focus {
+    border: none;
+}
+
+/* ── Header / Footer ──────────────────────────────────────────────── */
+
+Header {
+    background: #0d1117;
+    color: #58a6ff;
+    dock: top;
+}
+
+Footer {
+    background: #161b22;
+    color: #7d8590;
+}
+
+/* ── Main Stage (Horizontal split) ────────────────────────────────── */
+
+#main-stage {
+    height: 1fr;
+    width: 100%;
+}
+
+/* ── Left Pane: Tool Catalog ──────────────────────────────────────── */
+
+#left-pane {
+    width: 24;
+    min-width: 22;
+    height: 100%;
+    border: none;
+    padding: 1 2;
+    background: #161b22;
+}
+
+/* ── Center Pane: DAG + Inspector ─────────────────────────────────── */
+
+#center-pane {
+    width: 1fr;
+    height: 100%;
+    padding: 1 2;
+    background: #0d1117;
+    border: none;
+}
+
+#tree-container {
+    height: 2fr;
+    border: none;
+    padding: 1 2;
+    background: #0d1117;
+}
+
+#inspector-container {
+    height: 1fr;
+    border: none;
+    padding: 1 2;
+    background: #0d1117;
+    overflow-y: auto;
+}
+
+/* ── Right Pane: Telemetry ────────────────────────────────────────── */
+
+#right-pane {
+    width: 2fr;
+    height: 100%;
+    border: none;
+    padding: 1 2;
+    background: #161b22;
+}
+
+/* ── Pane Title Labels ────────────────────────────────────────────── */
+
+.pane-title {
+    height: auto;
+    padding: 0 0 1 0;
+    text-style: bold;
+    color: #58a6ff;
+    background: transparent;
+}
+
+/* ── Widget Overrides ─────────────────────────────────────────────── */
+
+DataTable {
+    background: transparent;
+    height: 1fr;
+}
+
+DataTable > .datatable--header {
+    color: #58a6ff;
+    text-style: bold;
+    background: transparent;
+}
+
+DataTable > .datatable--cursor {
+    background: #30363d;
+    color: #e6edf3;
+}
+
+Tree {
+    background: transparent;
+    height: 1fr;
+}
+
+Tree:focus {
+    border: none;
+}
+
+Tree > .tree--cursor {
+    background: #30363d;
+    color: #e6edf3;
+}
+
+RichLog {
+    background: transparent;
+    height: 1fr;
+}
+
+#inspector-pane {
+    height: 1fr;
+    color: #e6edf3;
+    background: transparent;
+    overflow-y: auto;
+}
+
+/* ── Inputs ───────────────────────────────────────────────────────── */
+
+#catalog-filter {
+    margin: 0 0 1 0;
+    border: none;
+    background: #21262d;
+    color: #e6edf3;
+    padding: 0 1;
+}
+
+#catalog-filter:focus {
+    border: none;
+    background: #30363d;
+}
+
+/* Command palette — full-width, modern "Raycast" feel */
+#cmd-input {
+    dock: bottom;
+    width: 100%;
+    margin: 0;
+    padding: 1 2;
+    border: none;
+    background: #21262d;
+    color: #e6edf3;
+}
+
+#cmd-input:focus {
+    border: none;
+    background: #30363d;
+}
+
+/* ── Loading Overlay ──────────────────────────────────────────────── */
+
+LoadingIndicator {
+    background: #0d1117 60%;
+    color: #58a6ff;
+}

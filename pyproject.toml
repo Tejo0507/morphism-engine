@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "morphism-engine"
+version = "3.1.0"
+description = "A self-healing, formally verified Category Theory shell."
+requires-python = ">=3.11"
+license = "MIT"
+keywords = ["category-theory", "pipeline", "z3", "formal-verification", "tui", "ollama"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries",
+]
+readme = "README.md"
+dependencies = [
+    "z3-solver>=4.12",
+    "aiohttp>=3.9",
+    "requests>=2.31",
+    "textual>=0.50",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "textual[dev]>=0.50",
+]
+
+[project.scripts]
+morphism = "morphism.cli.shell:main"
+morphism-tui = "morphism.cli.tui:main"
+morphism-engine = "morphism.cli.tui:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

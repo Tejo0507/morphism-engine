@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env/
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Environment Variables and Secrets
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# OS/IDE
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Morphism specific DBs and Logs
+.morphism_cache.db
+logs/
+*.log
+
+# Explicit exlusions for this repository based on user requirements
+tests/
+*Product Requirements Document*
+*Basics of MATLAB*.txt
