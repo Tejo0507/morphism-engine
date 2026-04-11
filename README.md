@@ -59,7 +59,7 @@ The result: a shell where **every pipe connection is a formally verified morphis
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/your-org/morphism-engine.git
+git clone https://github.com/Tejo0507/morphism-engine.git
 cd morphism-engine
 pip install -e ".[dev]"
 ```
