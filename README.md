@@ -1,6 +1,6 @@
 <p align="center">
   <strong>Morphism Engine</strong><br>
-  <em>A self-healing, formally verified Category Theory shell.</em>
+  <em>The CLI that Proves its Work.</em>
 </p>
 
 <p align="center">
@@ -11,6 +11,46 @@
   <img src="https://img.shields.io/badge/LLM-Ollama-orange" alt="Ollama">
   <img src="https://img.shields.io/badge/TUI-Textual-cyan" alt="Textual">
 </p>
+
+<p align="center">
+  <a href="https://www.linkedin.com/company/morphismengine">LinkedIn: @morphismengine</a> •
+  <a href="https://www.instagram.com/morphismengine">Instagram: @morphismengine</a>
+</p>
+
+---
+
+## Table of Contents
+
+- [Description](#description)
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [How It Works (Architecture)](#how-it-works-architecture)
+- [Architecture](#architecture)
+- [Testing](#testing)
+- [Requirements](#requirements)
+- [Acknowledgements](#acknowledgements)
+- [Contact / Maintainer](#contact--maintainer)
+- [License](#license)
+
+---
+
+## Description
+
+### What problem it solves
+
+Morphism solves unsafe boundary composition in CLI/data pipelines. Traditional pipes do not enforce schema compatibility between stages, so invalid transformations are often discovered only at runtime after damage or silent corruption.
+
+### Why it exists
+
+It exists to make pipeline composition verifiable, inspectable, and resilient. Instead of relying on ad hoc glue code for every type mismatch, Morphism automates repair and safety checks using a typed DAG model.
+
+### What makes it unique
+
+- Formal verification gates candidate transforms before execution.
+- LLM synthesis is used as a bounded generation engine, not as a trust boundary.
+- Verified transforms are cached and reused, reducing repeated synthesis cost.
+- Interactive REPL and Textual TUI expose internals (DAG, telemetry, node state) while running.
 
 ---
 
@@ -41,6 +81,15 @@ The result: a shell where **every pipe connection is a formally verified morphis
 ---
 
 ## Features
+
+- Formal verification using Z3 before bridge insertion.
+- LLM-powered logic synthesis for schema mismatch repair.
+- Persistent logic caching with SQLite WAL and schema-pair hashing.
+- Interactive TUI interface with DAG topography and live telemetry.
+- Native subprocess integration with runtime schema inference.
+- Parallel fan-out branching via `|+` using `asyncio.gather`.
+
+### Feature matrix
 
 | Feature | Description |
 |---|---|
@@ -126,7 +175,63 @@ Morphism infers `JSON_Object` for the first node and `Plaintext` for the second,
 
 ---
 
+## How It Works (Architecture)
+
+At a high level, Morphism coordinates five runtime components:
+
+- **UI layer**: REPL (`morphism`) and Textual TUI (`morphism-engine` / `morphism-tui`).
+- **Pipeline core**: typed DAG orchestration (`MorphismPipeline`, `FunctorNode`, `NativeCommandNode`).
+- **Synthesis layer**: LLM candidate generation (`LLMSynthesizer`, Ollama backend, mock backend for deterministic tests).
+- **Verification layer**: Z3-backed proof checks plus runtime postcondition fallback for non-numeric domains.
+- **Persistence layer**: SQLite functor cache keyed by schema-pair hash.
+
+### Data flow
+
+1. Parse pipeline and build graph edges.
+2. Validate schema boundaries at append/runtime.
+3. On mismatch, check cache for existing bridge.
+4. On miss, synthesize candidate transform.
+5. Compile and verify candidate.
+6. If safe, inject bridge and cache it; if not, retry/fail closed.
+7. Execute DAG and expose output plus per-node state.
+
+### Design philosophy
+
+- **Fail closed**: rejected or unverified transforms must never execute.
+- **Trust after proof**: cache hits are revalidated before reuse.
+- **Observability first**: telemetry/logs and node inspection are part of normal operation.
+- **Composable internals**: each layer has a narrow role and explicit contracts.
+
+---
+
 ## Architecture
+
+### System architecture (Mermaid)
+
+```mermaid
+graph TB
+  CLI["CLI Layer\nshell.py / tui.py"] --> P["MorphismPipeline\n(core/pipeline.py)"]
+  P --> CHK{"Schema match?"}
+
+  CHK -->|Yes| EX["Execute node / edge\n(core/node.py)"]
+  CHK -->|Pending at build-time| NAT["NativeCommandNode\n(core/native_node.py)"]
+  NAT --> INF["Schema Inference\n(core/inference.py)"]
+  INF --> EX
+
+  CHK -->|Mismatch| CACHE["FunctorCache\n(core/cache.py, SQLite WAL)"]
+  CACHE -->|Cache hit| VER["verify_functor_mapping\n(math/z3_verifier.py)"]
+  CACHE -->|Cache miss| SYN["LLMSynthesizer\n(ai/synthesizer.py)"]
+  SYN --> VER
+
+  VER -->|PASS| BR["Inject AI_Bridge_Functor"]
+  VER -->|FAIL/RETRY| SYN
+  BR --> CACHE
+  BR --> EX
+
+  EX --> OUT["Result (last leaf)\n+ node.output_state history"]
+```
+
+### System architecture (ASCII)
 
 ```
                         Morphism Engine — Under the Hood
@@ -227,6 +332,27 @@ pytest tests/test_phase9_10.py -v
 | requests | ≥ 2.31 | Sync HTTP fallback |
 | textual | ≥ 0.50 | Reactive terminal UI framework |
 | Ollama | latest | Local LLM inference server |
+
+---
+
+## Acknowledgements
+
+- **Z3 SMT Solver** for formal verification.
+- **Ollama** for local LLM inference.
+- **Textual** for the terminal UI runtime.
+- **aiohttp** and **requests** for network integrations.
+- The broader category-theory and formal-methods community for core conceptual inspiration.
+
+---
+
+## Contact / Maintainer
+
+- **Maintainer**: Tejo Sridhar M V S
+- **GitHub**: https://github.com/Tejo0507
+- **Repository**: https://github.com/Tejo0507/morphism-engine
+- **Email**: tejosridhar.mvs@gmail.com
+- **Instagram**: https://www.instagram.com/me.tejo
+- **LinkedIn**: https://www.linkedin.com/in/tejosridhar
 
 ---
 
