@@ -35,7 +35,7 @@ Feature requests are always welcome! When opening a proposal:
 ## Development Setup
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/morphism-engine.git
+git clone https://github.com/Tejo0507/morphism-engine.git
 cd morphism-engine
 
 # Create a virtual environment
