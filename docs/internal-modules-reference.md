@@ -23,8 +23,8 @@ Stability levels:
 | `morphism.cli.shell` | REPL command handling and parse/planning orchestration | `MorphismShell`, `main`, built-ins `history/inspect/tools/quit` | `MorphismShell`, `TOOL_REGISTRY` | `core.pipeline`, `core.node`, `core.native_node`, `ai.synthesizer`, `config`, `utils.logger` | users, tests (`test_phase6_shell`) | stable |
 | `morphism.cli.tui` | Textual UI command entry, telemetry, DAG inspection | `MorphismApp`, `main` | `MorphismApp`, `_PipeSuggester`, `_RichLogHandler` | `core.pipeline`, `core.node`, `core.native_node`, `core.cache`, `ai.synthesizer` | users, tests (`test_phase11_tui`) | stable |
 | `morphism.core.pipeline` | DAG orchestration, mismatch resolution, runtime execution traversal | `MorphismPipeline.append/add_branch/execute_all/maps_back/maps_forward` | `MorphismPipeline` | `core.node`, `core.cache`, `ai.synthesizer`, `math.z3_verifier`, `exceptions` | CLI layers, tests | stable |
-| `morphism.core.node` | DAG vertex abstraction and execution primitive | `FunctorNode.append_child/execute` | `FunctorNode` | `core.schemas`, `utils.logger` | `core.pipeline`, CLI | stable |
-| `morphism.core.native_node` | Native subprocess stage with dynamic schema inference | `NativeCommandNode.from_command/execute` | `NativeCommandNode` | `core.inference`, `core.node`, `exceptions` | `core.pipeline`, CLI | stable |
+| `morphism.core.node` | DAG vertex abstraction and execution primitive | `FunctorNode.append_child/execute/execute_stream` | `FunctorNode` | `core.schemas`, `utils.logger` | `core.pipeline`, CLI | stable |
+| `morphism.core.native_node` | Native subprocess stage with dynamic schema inference | `NativeCommandNode.from_command/execute/execute_stream` | `NativeCommandNode` | `core.inference`, `core.node`, `exceptions` | `core.pipeline`, CLI | stable |
 | `morphism.core.inference` | Output payload classification into schema classes | `infer_schema(data: str) -> Schema` | n/a | `core.schemas`, stdlib `json/csv` | `native_node` | stable |
 | `morphism.core.schemas` | Schema primitives and built-in schema instances | `Schema` dataclass + constants | `Schema` | stdlib | all execution/verification modules | stable |
 | `morphism.core.cache` | SQLite transform cache for synthesized bridges | `FunctorCache.lookup/store/delete/close` | `FunctorCache` | stdlib `sqlite3/hashlib` | `core.pipeline`, CLI TUI cache ownership | stable |
@@ -110,7 +110,7 @@ Responsibility:
 
 Public API surface:
 
-- `append(new_node)`, `add_branch(parent, children)`, `execute_all(initial_data)`.
+- `append(new_node)`, `add_branch(parent, children)`, `execute_all(initial_data)`, `execute_all_stream(initial_data)`.
 - convenience properties: `head`, `tail`, `length`.
 
 Key internal data structures:
@@ -165,11 +165,11 @@ Thread/process safety:
 
 Responsibility:
 
-- Run OS subprocess command and infer output schema.
+- Run OS subprocess command with chunked async stdin/stdout and infer output schema.
 
 Public API:
 
-- `from_command(cmd)`, `execute(data)`.
+- `from_command(cmd)`, `execute(data)`, `execute_stream(data)`.
 
 Inputs/outputs:
 

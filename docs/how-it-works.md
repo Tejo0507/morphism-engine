@@ -24,7 +24,7 @@ Stage-by-stage data flow (diagram-friendly):
 | Schema Inference | Native command stdout text | `Schema` object (`JSON_Object`, `CSV_Data`, `Plaintext`) | JSON parse success, CSV sniffer heuristic, fallback | concrete `output_schema` for native node | ambiguous data classified as fallback `Plaintext` |
 | Synthesis | source schema + target schema (+ config) | candidate lambda string (`code_str`) + compiled callable (`func`) | cache hit/miss, compile pass/fail, retry loop | bridge candidate | synthesis timeout, invalid lambda syntax, unsafe logic |
 | Verification | `source_schema`, `target_schema`, candidate transform | Z3 constraints + runtime dry-run guard | UNSAT/SAT/unknown, numeric vs non-numeric constraints | `True` (safe) / `False` (unsafe) / exception | `VerificationFailedError`, rejected candidate |
-| Execution + Caching | DAG + optional bridge insertions | async traversal with node `output_state` snapshots | deferred mismatch resolution at runtime; cache store/evict | final leaf result + persisted mapping in SQLite | `EngineExecutionError`, runtime schema mismatch without LLM |
+| Execution + Caching | DAG + optional bridge insertions | async traversal with node `output_state` snapshots (materialized or streamed) | deferred mismatch resolution at runtime; cache store/evict | final leaf result or async output stream + persisted mapping in SQLite | `EngineExecutionError`, runtime schema mismatch without LLM |
 
 ## Stage-by-Stage Deep Dive
 
@@ -50,9 +50,10 @@ Boundary discovery:
 
 Stream semantics and ordering assumptions:
 
-- Each node consumes one in-memory value and emits one in-memory value.
-- Native command stdin/stdout is materialized as whole strings (not token streams).
-- Branch fan-out runs child edges concurrently (`asyncio.gather`).
+- Materialized mode (`execute_all`) preserves one-value-in/one-value-out compatibility.
+- Streaming mode (`execute_all_stream`) propagates async iterators through nodes lazily.
+- Native command stdin/stdout uses chunked async streaming; schema inference is sampled from an early output window.
+- Branch fan-out runs child edges concurrently (`asyncio.gather`) with backpressure-aware async tee for streamed payloads.
 - Return value is last leaf by insertion order for compatibility; all branch outputs remain in node states.
 
 Fallback behavior:

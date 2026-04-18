@@ -8,6 +8,8 @@ for parallel children.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterable, AsyncIterator
+from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
@@ -32,6 +34,85 @@ _EVAL_GLOBALS: dict[str, object] = {
     "math": __import__("math"),
     "re": __import__("re"),
 }
+
+_TEE_END = object()
+_TEE_ERROR = object()
+
+
+def _is_async_iterable(value: Any) -> bool:
+    return isinstance(value, AsyncIterable)
+
+
+def _single_value_stream(value: Any) -> AsyncIterator[Any]:
+    async def _single() -> AsyncIterator[Any]:
+        yield value
+
+    return _single()
+
+
+def _async_tee(source: AsyncIterable[Any], branches: int) -> list[AsyncIterator[Any]]:
+    queues = [asyncio.Queue(maxsize=1) for _ in range(branches)]
+    producer_task: asyncio.Task[Any] | None = None
+    active_consumers = branches
+    lock = asyncio.Lock()
+
+    async def _produce() -> None:
+        try:
+            async for item in source:
+                for q in queues:
+                    await q.put((None, item))
+        except Exception as exc:
+            for q in queues:
+                await q.put((_TEE_ERROR, exc))
+        finally:
+            for q in queues:
+                await q.put((_TEE_END, None))
+
+    def _ensure_started() -> None:
+        nonlocal producer_task
+        if producer_task is None:
+            producer_task = asyncio.create_task(_produce())
+
+    async def _consumer(queue: asyncio.Queue[tuple[object | None, Any]]) -> AsyncIterator[Any]:
+        nonlocal active_consumers
+        _ensure_started()
+        try:
+            while True:
+                marker, payload = await queue.get()
+                if marker is _TEE_END:
+                    break
+                if marker is _TEE_ERROR:
+                    raise payload
+                yield payload
+        finally:
+            async with lock:
+                active_consumers -= 1
+                if (
+                    active_consumers == 0
+                    and producer_task is not None
+                    and not producer_task.done()
+                ):
+                    producer_task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await producer_task
+
+    return [_consumer(queue) for queue in queues]
+
+
+async def _drain_value(value: Any) -> None:
+    if _is_async_iterable(value):
+        async for _ in value:
+            pass
+
+
+async def _finalize_drain_tasks(tasks: list[asyncio.Task[None]]) -> None:
+    if not tasks:
+        return
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    first_error = next((r for r in results if isinstance(r, Exception)), None)
+    if isinstance(first_error, Exception):
+        raise first_error
 
 
 @dataclass
@@ -273,21 +354,27 @@ class MorphismPipeline:
     # Execute – topological DAG traversal
     # ------------------------------------------------------------------
     async def execute_all(self, initial_data: Any) -> Any:
-        """Topological traversal of the DAG.
+        """Topological traversal of the DAG (materialized mode)."""
+        return await self._execute_all_internal(initial_data, stream_mode=False)
 
-        * Root nodes receive *initial_data*.
-        * When a node finishes, its result fans out to all children
-          via ``asyncio.gather``.
-        * Pending schemas are resolved at runtime; mismatches trigger
-          bridge synthesis.
-        * Returns the ``output_state`` of the **last leaf** (by
-          insertion order) for backward-compat; all leaf states are
-          accessible via ``node.output_state``.
-        """
+    async def execute_all_stream(self, initial_data: Any) -> AsyncIterator[Any]:
+        """Topological traversal returning a lazy async output stream."""
+        result = await self._execute_all_internal(initial_data, stream_mode=True)
+        if _is_async_iterable(result):
+            return result
+        return _single_value_stream(result)
+
+    async def _execute_all_internal(self, initial_data: Any, stream_mode: bool) -> Any:
+        """Shared DAG traversal for materialized and streaming execution."""
+
+        async def _invoke_node(node: FunctorNode, data: Any) -> Any:
+            if stream_mode:
+                return await node.execute_stream(data)
+            return await node.execute(data)
 
         async def _run_node(node: FunctorNode, data: Any) -> Any:
             try:
-                result = await node.execute(data)
+                result = await _invoke_node(node, data)
             except Exception as exc:
                 raise EngineExecutionError(
                     f"Node {node.name!r} failed: {exc}"
@@ -297,14 +384,21 @@ class MorphismPipeline:
                 return result
 
             # ── Resolve deferred edges & fan-out ─────────────────────
+            child_inputs: list[Any]
+            if _is_async_iterable(result) and len(node.children) > 1:
+                child_inputs = list(_async_tee(result, len(node.children)))
+            else:
+                child_inputs = [result] * len(node.children)
+
             child_tasks: list[Any] = []
-            for child in node.children:
+            for idx, child in enumerate(node.children):
                 actual_out = node.output_schema
                 next_in = child.input_schema
+                child_data = child_inputs[idx]
 
                 if next_in.name == "Pending":
                     child.input_schema = actual_out
-                    child_tasks.append(_run_node(child, result))
+                    child_tasks.append(_run_node(child, child_data))
                 elif actual_out != next_in:
                     # Runtime mismatch → bridge
                     if self.llm_client is None:
@@ -325,25 +419,70 @@ class MorphismPipeline:
                     bridge.parents.append(node)
                     self.all_nodes.append(bridge)
                     try:
-                        bridge_result = await bridge.execute(result)
+                        bridge_result = await _invoke_node(bridge, child_data)
                     except Exception as exc:
                         raise EngineExecutionError(
                             f"Bridge node failed: {exc}"
                         ) from exc
                     child_tasks.append(_run_node(child, bridge_result))
                 else:
-                    child_tasks.append(_run_node(child, result))
+                    child_tasks.append(_run_node(child, child_data))
 
             results = await asyncio.gather(*child_tasks)
-            return results[-1]  # last branch result for compat
+
+            if not stream_mode:
+                return results[-1]  # last branch result for compat
+
+            if len(results) == 1:
+                return results[0]
+
+            side_tasks = [
+                asyncio.create_task(_drain_value(value))
+                for value in results[:-1]
+            ]
+            last_result = results[-1]
+
+            if not _is_async_iterable(last_result):
+                await _finalize_drain_tasks(side_tasks)
+                return last_result
+
+            async def _last_with_side_drains() -> AsyncIterator[Any]:
+                try:
+                    async for item in last_result:
+                        yield item
+                finally:
+                    await _finalize_drain_tasks(side_tasks)
+
+            return _last_with_side_drains()
 
         # ── Execute all roots (typically one) ────────────────────────
         root_tasks = [_run_node(r, initial_data) for r in self.root_nodes]
         root_results = await asyncio.gather(*root_tasks)
 
+        if stream_mode and len(root_results) > 1:
+            side_tasks = [
+                asyncio.create_task(_drain_value(value))
+                for value in root_results[:-1]
+            ]
+            tail_result = root_results[-1]
+            if _is_async_iterable(tail_result):
+                async def _tail_with_side_drains() -> AsyncIterator[Any]:
+                    try:
+                        async for item in tail_result:
+                            yield item
+                    finally:
+                        await _finalize_drain_tasks(side_tasks)
+
+                final_result = _tail_with_side_drains()
+            else:
+                await _finalize_drain_tasks(side_tasks)
+                final_result = tail_result
+        else:
+            final_result = root_results[-1] if root_results else None
+
         # Set current_context to last leaf for time-travel
         self.current_context = self.all_nodes[-1] if self.all_nodes else None
-        return root_results[-1] if root_results else None
+        return final_result
 
     def __repr__(self) -> str:
         return f"MorphismPipeline(nodes={self.length})"

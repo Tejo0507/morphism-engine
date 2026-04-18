@@ -87,6 +87,7 @@ The result: a shell where **every pipe connection is a formally verified morphis
 - Persistent logic caching with SQLite WAL and schema-pair hashing.
 - Interactive TUI interface with DAG topography and live telemetry.
 - Native subprocess integration with runtime schema inference.
+- True lazy streaming execution via async generators (`execute_all_stream`).
 - Parallel fan-out branching via `|+` using `asyncio.gather`.
 
 ### Feature matrix
@@ -96,6 +97,7 @@ The result: a shell where **every pipe connection is a formally verified morphis
 | **Self-Healing Pipelines** | Schema mismatches are autonomously repaired by AI synthesis + Z3 proof. |
 | **Dynamic Schema Inference** | Native subprocesses (`echo`, `curl`, `python -c`) get their output schema inferred at runtime — JSON, CSV, or plaintext. |
 | **Zero-Latency Functor Cache** | SQLite WAL-mode cache with SHA-256 keying. A proven bridge is never synthesised twice. |
+| **True Lazy Streaming** | Native command nodes stream stdout in chunks and pipelines can execute as async streams without buffering full payloads in memory. |
 | **DAG Branching (`\|+`)** | Fan-out a single node to multiple children with `emit_raw \|+ (render_float, to_sql)`. Parallel execution via `asyncio.gather`. |
 | **Reactive Textual TUI** | 3-column layout: searchable Tool Catalog, live DAG Topographer tree, node Inspector, and streaming Telemetry log. |
 | **Intelligent Autocomplete** | Pipe-aware command suggestions that reset after every `\|` token. |
@@ -172,6 +174,29 @@ echo {"name":"Ada"} | python -c "import sys,json; print(json.load(sys.stdin)['na
 ```
 
 Morphism infers `JSON_Object` for the first node and `Plaintext` for the second, auto-bridging as needed.
+
+### Stream giant payloads without buffering
+
+For large outputs (multi-GB files, continuous streams), use the streaming API:
+
+```python
+import asyncio
+
+from morphism.ai.synthesizer import MockLLMSynthesizer
+from morphism.core.pipeline import MorphismPipeline
+
+async def main() -> None:
+    pipeline = MorphismPipeline(llm_client=MockLLMSynthesizer())
+    # Build nodes with append(...)
+    stream = await pipeline.execute_all_stream(None)
+    async for chunk in stream:
+        # Process each chunk incrementally
+        pass
+
+asyncio.run(main())
+```
+
+`execute_all` remains available for compatibility when you want a fully materialized final value.
 
 ---
 
