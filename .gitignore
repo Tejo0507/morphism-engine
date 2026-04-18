@@ -47,6 +47,7 @@ venv.bak/
 .morphism_cache.db
 logs/
 *.log
+benchmarks/results/
 
 # Explicit exlusions for this repository based on user requirements
 tests/

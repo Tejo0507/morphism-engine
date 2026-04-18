@@ -34,6 +34,7 @@ _EVAL_GLOBALS: dict[str, object] = {
     "json": __import__("json"),
     "math": __import__("math"),
     "re": __import__("re"),
+    "csv": __import__("csv"),
 }
 
 _TEE_END = object()

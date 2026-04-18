@@ -27,6 +27,7 @@
 - [Quick Start](#quick-start)
 - [How It Works (Architecture)](#how-it-works-architecture)
 - [Architecture](#architecture)
+- [Benchmarking](#benchmarking)
 - [Testing](#testing)
 - [Requirements](#requirements)
 - [Acknowledgements](#acknowledgements)
@@ -93,6 +94,7 @@ The result: a shell where **every pipe connection is a formally verified morphis
 - True lazy streaming execution via async generators (`execute_all_stream`).
 - Shell/TUI stream toggles (`stream auto|on|off`) for native-heavy pipelines.
 - Parallel fan-out branching via `|+` using `asyncio.gather`.
+- Built-in benchmark suite for latency and dirty-data evaluation.
 
 ### Feature matrix
 
@@ -342,6 +344,25 @@ graph TB
 | `morphism.math.z3_verifier` | Z3 SMT proof of generated functors |
 | `morphism.cli.tui` | Textual TUI (recommended interface) |
 | `morphism.cli.shell` | Classic `cmd.Cmd` REPL (fallback) |
+
+---
+
+## Benchmarking
+
+Run the full benchmark suite:
+
+```bash
+morphism-bench --output-dir benchmarks/results --trials 30
+```
+
+Suite outputs:
+
+- `benchmarks/results/latency_microbenchmark.svg`
+- `benchmarks/results/latency_microbenchmark.md`
+- `benchmarks/results/dirty_data_benchmark.svg`
+- `benchmarks/results/dirty_data_benchmark.md`
+
+The latency benchmark compares raw shell piping, Morphism cache-hit latency, and Morphism cold-start latency (synthesis + verification). The dirty-data benchmark downloads Titanic data, corrupts selected fields, demonstrates raw pipeline silent failure, and records Morphism mismatch detection, bridge synthesis, verifier admission, and successful processing.
 
 ---
 

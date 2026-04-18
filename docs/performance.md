@@ -8,6 +8,42 @@ description: Architecture-specific performance guide for optimizing latency, thr
 
 Morphism latency is dominated by whether execution stays on the no-mismatch path or enters synthesis and verification.
 
+## Benchmark Suite
+
+Morphism now includes a first-class benchmark suite under `morphism.benchmarks`.
+
+Run all benchmarks:
+
+```bash
+morphism-bench --output-dir benchmarks/results --trials 30
+```
+
+Run latency only:
+
+```bash
+python -m morphism.benchmarks.latency --output-dir benchmarks/results --trials 30
+```
+
+Run dirty-data only:
+
+```bash
+python -m morphism.benchmarks.dirty_data --output-dir benchmarks/results
+```
+
+Generated artifacts:
+
+- `latency_microbenchmark_samples.csv`
+- `latency_microbenchmark_summary.json`
+- `latency_microbenchmark.svg`
+- `dirty_data_benchmark.json`
+- `dirty_data_benchmark.md`
+- `dirty_data_benchmark.svg`
+
+Publication claim supported by the latency benchmark:
+
+1. Cold path pays synthesis + verification cost.
+2. Cache-hit path removes synthesis cost and approaches raw shell latency.
+
 ### Cold Path vs Warm Path
 
 Definitions:
