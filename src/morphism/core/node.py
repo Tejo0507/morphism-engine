@@ -33,6 +33,7 @@ class FunctorNode:
     output_schema: Schema
     executable: Callable[[Any], Any]
     name: str = "anonymous"
+    supports_arrow: bool = False
 
     # DAG pointers (replaced former DLL prev/next)
     parents: list["FunctorNode"] = field(default_factory=list, repr=False, compare=False)
@@ -87,7 +88,10 @@ class FunctorNode:
         return stream
 
     async def _invoke_executable(self, payload: Any) -> Any:
-        result = self.executable(payload)
+        from morphism.core.transport import normalize_node_input
+
+        normalized = normalize_node_input(payload, self)
+        result = self.executable(normalized)
         if inspect.isawaitable(result):
             return await result
         return result

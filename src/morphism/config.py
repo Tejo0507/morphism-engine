@@ -40,6 +40,23 @@ class MorphismConfig:
             os.getenv("MORPHISM_LLM_REQUEST_TIMEOUT", "60")
         )
     )
+    stream_mode: str = field(
+        default_factory=lambda: os.getenv("MORPHISM_STREAM_MODE", "auto").lower()
+    )
+    stream_auto_for_native: bool = field(
+        default_factory=lambda: os.getenv(
+            "MORPHISM_STREAM_AUTO_FOR_NATIVE", "true"
+        ).lower() in {"1", "true", "yes", "on"}
+    )
+    proof_certificate_dir: str = field(
+        default_factory=lambda: os.getenv(
+            "MORPHISM_PROOF_CERT_DIR", "logs/proofs"
+        )
+    )
+    arrow_enabled: bool = field(
+        default_factory=lambda: os.getenv("MORPHISM_ARROW_ENABLED", "true").lower()
+        in {"1", "true", "yes", "on"}
+    )
 
 
 # Module-level singleton – import this everywhere.

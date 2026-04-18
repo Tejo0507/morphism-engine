@@ -43,7 +43,7 @@ Use this surface to add new schema domains and detection/inference routing for n
 | Contract Area | Required Definition | Allowed Inputs/Outputs | Lifecycle Callback | Error Semantics | Compatibility Guarantee |
 |---|---|---|---|---|---|
 | Schema declaration | `Schema(name: str, data_type: Type, constraints: str)` | immutable value object | module import time | declaration errors are developer-time failures | stable dataclass semantics (`frozen`, value equality) |
-| Constraint grammar | numeric bounds `a <= x <= b` or non-numeric constraints handled as runtime checks | verifier consumes numeric subset; non-numeric defers to runtime postcondition path | verifier call site | malformed numeric constraints can raise parser errors | grammar is stable for current numeric parser |
+| Constraint grammar | numeric bounds `a <= x <= b` plus supported string constraints (`len`, `contains`, `regex`) | verifier consumes numeric + string symbolic subsets; unsupported forms defer to runtime postcondition path | verifier call site | malformed constraints can raise parser errors | grammar is stable for current parser subset |
 | Inference routing | extend `infer_schema(data: str) -> Schema` with deterministic precedence | raw stdout string -> known schema | native node execute completion | parsing failures must degrade to safer fallback, not crash | inference function contract is stable |
 | Pending resolution | respect `Pending` as deferred type resolution boundary | `Pending -> concrete` after execution | runtime edge resolution in pipeline | unresolved mismatches must become explicit mismatch/bridge events | pipeline deferred-resolution behavior is stable |
 
@@ -85,7 +85,7 @@ Current state:
 |---|---|---|---|---|---|
 | Verification entrypoint | preserve `verify_functor_mapping(source_schema, target_schema, transformation_logic, code_str=None, cfg=None) -> bool` | schema pair + callable -> `True`/`False` | every compiled candidate | `False` means reject-and-continue; typed failures can be retried; unknown terminal errors abort attempt series | function signature and boolean semantics are stable |
 | Numeric proof pipeline | maintain SMT check of negated postcondition where constraints are numeric | symbolic variable + constraints + transform expression | after dry-run guard | solver `unknown` should remain typed verification failure | current solver behavior is stable |
-| Non-numeric policy | preserve runtime postcondition path for non-symbolic domains | sample execution + type/range checks | when numeric parser does not apply | runtime evaluation errors reject candidate | runtime fallback contract is stable |
+| Non-numeric policy | preserve runtime postcondition path for unsupported symbolic domains | sample execution + type/range checks | when neither numeric nor supported string parser applies | runtime evaluation errors reject candidate | runtime fallback contract is stable |
 | Guardrail policies | optional domain-specific anchors (for critical pairs) | callable probes and tolerance checks | after generic verifier pass | guardrail failure must reject candidate, never silently downgrade | guardrail stage order is stable |
 
 Correctness risk:

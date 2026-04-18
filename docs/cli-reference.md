@@ -28,6 +28,7 @@ Formal REPL command grammar (`morphism`):
 <builtin> ::= "history"
            | "inspect" <ws> <int>
            | "tools"
+           | "stream" [<ws> ("auto"|"on"|"off")]
            | "help" [<ws> <token>]
            | "quit" | "exit" | <EOF>
 
@@ -72,6 +73,10 @@ Runtime controls (environment-backed):
 | `MORPHISM_LOG_LEVEL` | string | `INFO` | env | console verbosity | invalid values effectively fall back to INFO level mapping |
 | `MORPHISM_MAX_SYNTHESIS_ATTEMPTS` | int | `6` | env | candidate retry budget per mismatch | exhaustion raises `VerificationFailedError` |
 | `MORPHISM_LLM_REQUEST_TIMEOUT` | int seconds | `60` | env | synthesis HTTP timeout | request timeout and eventual synthesis failure |
+| `MORPHISM_STREAM_MODE` | `auto\|on\|off` | `auto` | env | default streaming strategy for REPL/TUI pipeline execution | invalid values normalize to `auto` |
+| `MORPHISM_STREAM_AUTO_FOR_NATIVE` | bool | `true` | env | when `MORPHISM_STREAM_MODE=auto`, stream pipelines containing native nodes | false disables native auto-streaming |
+| `MORPHISM_PROOF_CERT_DIR` | path | `logs/proofs` | env | directory for proof certificate artifacts | path creation/write failures are logged; verification still proceeds |
+| `MORPHISM_ARROW_ENABLED` | bool | `true` | env | enables Arrow transport path when `pyarrow` is available | automatic fallback to Python payloads |
 
 Precedence rules (implemented behavior):
 
@@ -212,6 +217,24 @@ Current registry (3.1.x):
 - `emit_raw`
 - `render_float`
 
+##### `stream [auto|on|off]`
+
+Syntax:
+
+```text
+stream
+stream auto
+stream on
+stream off
+```
+
+Behavior:
+
+- No arg: prints current stream mode.
+- `auto`: stream mode is used for native-heavy pipelines.
+- `on`: force stream execution (`execute_all_stream`).
+- `off`: force materialized execution (`execute_all`).
+
 ##### `help`
 
 Syntax:
@@ -252,6 +275,7 @@ Input contract:
 
 - command text entered via TUI command input widget.
 - supports same pipeline grammar as REPL.
+- supports `stream [auto|on|off]` control command in the command bar.
 
 Output contract:
 

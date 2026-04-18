@@ -11,6 +11,7 @@ Verification in Morphism is an admission gate for synthesized (or cached) bounda
 What is proven:
 
 1. For supported numeric constraint domains, candidate transform `h` maps source-domain values into target-domain constraints.
+2. For supported string constraint domains, candidate transform `h` is checked with Z3 string theory (`z3str3`) against regex/length/contains-style constraints.
 2. Candidate is rejected if solver finds a counterexample.
 3. Candidate is rejected if solver cannot decide (`unknown`) under current timeout policy.
 
@@ -48,6 +49,7 @@ Boundary between syntactic checks and semantic proofs:
 - Semantic proof checks:
   - satisfiability of negated postcondition over source domain
   - runtime postcondition checks for non-symbolically modeled domains
+  - proof certificate artifact emission for every verification attempt
 
 ## Encoding Pipeline
 
@@ -59,6 +61,7 @@ Verification path is implemented as a staged encoder and checker.
 
 2. Domain classification
 - If source constraint is numeric interval (`lo <= x <= hi`), continue to symbolic SMT path.
+- Else if source/target are string schemas and candidate AST is supported, continue to symbolic string SMT path (`z3str3`).
 - Otherwise, fallback to runtime postcondition check path.
 
 3. Constraint normalization
@@ -66,6 +69,10 @@ Verification path is implemented as a staged encoder and checker.
 - For numeric intervals:
   - source over integer symbol `x`
   - target over real symbol `y`
+- For supported string constraints:
+  - source over string symbol `x`
+  - target over string symbol `y`
+  - supported clauses include `len(x)`, `contains(x, ...)`, `not contains(...)`, `regex(x, ...)`
 
 4. Transformation encoding
 - Preferred path: AST translation from `code_str` into Z3 expression.
@@ -80,6 +87,7 @@ Verification path is implemented as a staged encoder and checker.
 - `UNSAT` -> accept candidate
 - `SAT` -> reject candidate
 - `UNKNOWN` -> raise verification error
+- write proof certificate transcript (mode, assertions, SAT result, model if any)
 
 ### Constraint Mapping Table (pipeline concept -> SMT encoding)
 
@@ -175,7 +183,7 @@ Diagnostic artifacts emitted:
 
 - Structured log lines for proof pass/fail and counterexample model on SAT.
 - Pipeline-level rejection logs (compile failure, verifier error, anchors failure).
-- No dedicated proof artifact file in core runtime.
+- Dedicated proof certificate JSON file written to `MORPHISM_PROOF_CERT_DIR` (default `logs/proofs`).
 
 ## Performance Characteristics
 

@@ -25,6 +25,7 @@ dependencies = [
     "z3-solver>=4.12",
     "aiohttp>=3.9",
     "requests>=2.31",
+    "pyarrow>=16.0",
     "textual>=0.50",
 ]
 

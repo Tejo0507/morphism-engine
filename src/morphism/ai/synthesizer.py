@@ -71,6 +71,10 @@ class OllamaSynthesizer(LLMSynthesizer):
             "100.0`. "
             "You must always ensure the final output matches the Target "
             "Schema's Python type. "
+            "If target/output type is string, prioritize transformations that "
+            "preserve explicit target constraints such as length bounds, regex "
+            "boundaries, or token stripping (e.g. slicing, replace, "
+            "removeprefix/removesuffix). "
             "Example: lambda x: x / 100.0"
         )
         _log.debug("Prompt: %s", prompt)

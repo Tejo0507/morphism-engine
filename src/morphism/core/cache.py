@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS functors (
     source_name  TEXT     NOT NULL,
     target_name  TEXT     NOT NULL,
     lambda_string TEXT    NOT NULL,
+    proof_certificate_path TEXT,
     timestamp    DATETIME DEFAULT CURRENT_TIMESTAMP
 )
 """
@@ -51,9 +52,19 @@ class FunctorCache:
             self._conn = sqlite3.connect(self._db_path, timeout=5)
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute(_CREATE_TABLE)
+            self._ensure_columns(self._conn)
             self._conn.commit()
             _log.debug("Opened cache DB at %s", self._db_path)
         return self._conn
+
+    def _ensure_columns(self, conn: sqlite3.Connection) -> None:
+        with conn:
+            cur = conn.execute("PRAGMA table_info(functors)")
+            columns = {row[1] for row in cur.fetchall()}
+            if "proof_certificate_path" not in columns:
+                conn.execute(
+                    "ALTER TABLE functors ADD COLUMN proof_certificate_path TEXT"
+                )
 
     # ── Public API ───────────────────────────────────────────────────
 
@@ -83,6 +94,8 @@ class FunctorCache:
         source_name: str,
         target_name: str,
         lambda_string: str,
+        *,
+        proof_certificate_path: str | None = None,
     ) -> None:
         """Insert (or replace) a verified lambda into the cache."""
         conn = self._ensure_conn()
@@ -90,9 +103,15 @@ class FunctorCache:
         with conn:
             conn.execute(
                 "INSERT OR REPLACE INTO functors "
-                "(schema_hash, source_name, target_name, lambda_string) "
-                "VALUES (?, ?, ?, ?)",
-                (h, source_name, target_name, lambda_string),
+                "(schema_hash, source_name, target_name, lambda_string, proof_certificate_path) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    h,
+                    source_name,
+                    target_name,
+                    lambda_string,
+                    proof_certificate_path,
+                ),
             )
         _log.info(
             "[CACHE STORE] %s->%s persisted (hash=%s…)",

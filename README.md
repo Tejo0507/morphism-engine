@@ -87,7 +87,11 @@ The result: a shell where **every pipe connection is a formally verified morphis
 - Persistent logic caching with SQLite WAL and schema-pair hashing.
 - Interactive TUI interface with DAG topography and live telemetry.
 - Native subprocess integration with runtime schema inference.
+- Symbolic string verification (`z3str3`) for regex/length/token constraints.
+- Proof certificate artifacts emitted for every verification attempt.
+- Apache Arrow typed transport path with automatic fallback.
 - True lazy streaming execution via async generators (`execute_all_stream`).
+- Shell/TUI stream toggles (`stream auto|on|off`) for native-heavy pipelines.
 - Parallel fan-out branching via `|+` using `asyncio.gather`.
 
 ### Feature matrix
@@ -97,6 +101,9 @@ The result: a shell where **every pipe connection is a formally verified morphis
 | **Self-Healing Pipelines** | Schema mismatches are autonomously repaired by AI synthesis + Z3 proof. |
 | **Dynamic Schema Inference** | Native subprocesses (`echo`, `curl`, `python -c`) get their output schema inferred at runtime — JSON, CSV, or plaintext. |
 | **Zero-Latency Functor Cache** | SQLite WAL-mode cache with SHA-256 keying. A proven bridge is never synthesised twice. |
+| **String SMT Verification** | String-domain transforms can be proven with Z3 string theory (`z3str3`) including regex, length, and token-constraints where representable. |
+| **Proof Certificates** | Each verification writes a proof artifact JSON transcript to `logs/proofs` (or configured path) for auditability. |
+| **Arrow Transport** | Typed node-to-node payloads can travel as in-memory Arrow tables when both endpoints opt-in, with transparent Python fallback. |
 | **True Lazy Streaming** | Native command nodes stream stdout in chunks and pipelines can execute as async streams without buffering full payloads in memory. |
 | **DAG Branching (`\|+`)** | Fan-out a single node to multiple children with `emit_raw \|+ (render_float, to_sql)`. Parallel execution via `asyncio.gather`. |
 | **Reactive Textual TUI** | 3-column layout: searchable Tool Catalog, live DAG Topographer tree, node Inspector, and streaming Telemetry log. |
@@ -137,7 +144,7 @@ ollama pull qwen2.5-coder:1.5b
 pytest tests/ -v
 ```
 
-All **73 tests** should pass.
+All **100 tests** should pass.
 
 ---
 
@@ -197,6 +204,14 @@ asyncio.run(main())
 ```
 
 `execute_all` remains available for compatibility when you want a fully materialized final value.
+
+### Stream mode toggles (REPL/TUI)
+
+Use `stream auto`, `stream on`, or `stream off` to control execution style.
+
+- `auto` (default): stream native-heavy pipelines.
+- `on`: force stream mode.
+- `off`: force materialized mode.
 
 ---
 

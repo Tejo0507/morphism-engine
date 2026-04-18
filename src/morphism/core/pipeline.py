@@ -17,6 +17,7 @@ from morphism.ai.synthesizer import LLMSynthesizer
 from morphism.core.cache import FunctorCache
 from morphism.core.node import FunctorNode
 from morphism.core.schemas import Schema
+from morphism.core.transport import adapt_payload_for_child
 from morphism.exceptions import (
     EngineExecutionError,
     SchemaMismatchError,
@@ -250,7 +251,14 @@ class MorphismPipeline:
             except Exception:
                 _log.warning("Cached lambda did not compile — falling through to LLM.")
             else:
-                if verify_functor_mapping(src, tgt, func, code_str=cached_code):
+                cached_proof_artifact: dict[str, Any] = {}
+                if verify_functor_mapping(
+                    src,
+                    tgt,
+                    func,
+                    code_str=cached_code,
+                    proof_artifact=cached_proof_artifact,
+                ):
                     return FunctorNode(
                         input_schema=src,
                         output_schema=tgt,
@@ -285,8 +293,13 @@ class MorphismPipeline:
             _log.info("Compiled functor: %s", code_str)
 
             try:
+                proof_artifact: dict[str, Any] = {}
                 is_safe = verify_functor_mapping(
-                    src, tgt, func, code_str=code_str,
+                    src,
+                    tgt,
+                    func,
+                    code_str=code_str,
+                    proof_artifact=proof_artifact,
                 )
             except (VerificationFailedError, ValueError) as exc:
                 last_error = exc
@@ -321,7 +334,12 @@ class MorphismPipeline:
             )
 
             # ── Persist to cache ─────────────────────────────────────
-            self.cache.store(src.name, tgt.name, code_str)
+            self.cache.store(
+                src.name,
+                tgt.name,
+                code_str,
+                proof_certificate_path=proof_artifact.get("certificate_path"),
+            )
 
             return FunctorNode(
                 input_schema=src,
@@ -367,6 +385,16 @@ class MorphismPipeline:
     async def _execute_all_internal(self, initial_data: Any, stream_mode: bool) -> Any:
         """Shared DAG traversal for materialized and streaming execution."""
 
+        def _adapt_for_child(data: Any, node: FunctorNode, child: FunctorNode) -> Any:
+            if _is_async_iterable(data):
+                async def _adapted_stream() -> AsyncIterator[Any]:
+                    async for item in data:
+                        yield adapt_payload_for_child(item, node, child)
+
+                return _adapted_stream()
+
+            return adapt_payload_for_child(data, node, child)
+
         async def _invoke_node(node: FunctorNode, data: Any) -> Any:
             if stream_mode:
                 return await node.execute_stream(data)
@@ -394,7 +422,7 @@ class MorphismPipeline:
             for idx, child in enumerate(node.children):
                 actual_out = node.output_schema
                 next_in = child.input_schema
-                child_data = child_inputs[idx]
+                child_data = _adapt_for_child(child_inputs[idx], node, child)
 
                 if next_in.name == "Pending":
                     child.input_schema = actual_out

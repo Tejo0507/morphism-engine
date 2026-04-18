@@ -100,6 +100,7 @@ class MorphismShell(cmd.Cmd):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.current_pipeline: Optional[MorphismPipeline] = None
+        self._stream_mode = self._normalize_stream_mode(config.stream_mode)
 
     def cmdloop(self, intro: Optional[str] = None) -> None:
         """Handle Ctrl+C gracefully."""
@@ -128,12 +129,14 @@ class MorphismShell(cmd.Cmd):
         except MorphismError as exc:
             _log.error("Pipeline error: %s", exc, exc_info=True)
             sys.stdout.write(
-                f"{_RED}[Morphism] ERROR: {exc}{_RESET}\n"
+                f"{_RED}[Morphism] ERROR: {exc} "
+                f"(command: {stripped}){_RESET}\n"
             )
         except Exception as exc:
             _log.error("Unexpected error: %s", exc, exc_info=True)
             sys.stdout.write(
-                f"{_RED}[Morphism] UNEXPECTED ERROR: {exc}{_RESET}\n"
+                f"{_RED}[Morphism] UNEXPECTED ERROR: {exc} "
+                f"(command: {stripped}){_RESET}\n"
             )
 
     async def _async_process_pipeline(self, line: str) -> None:
@@ -160,9 +163,7 @@ class MorphismShell(cmd.Cmd):
             assert parent is not None
             await pipeline.add_branch(parent, children)
 
-            result = await pipeline.execute_all(None)
-            self.current_pipeline = pipeline
-            sys.stdout.write(f"\n>>> {result}\n")
+            await self._execute_pipeline_with_mode(pipeline)
             return
 
         # ── Linear pipe (classic) ────────────────────────────────────
@@ -173,9 +174,44 @@ class MorphismShell(cmd.Cmd):
         for cmd_name in segments:
             await pipeline.append(_make_node(cmd_name))
 
-        result = await pipeline.execute_all(None)
+        await self._execute_pipeline_with_mode(pipeline)
+
+    async def _execute_pipeline_with_mode(self, pipeline: MorphismPipeline) -> None:
+        if self._should_stream_pipeline(pipeline):
+            stream = await pipeline.execute_all_stream(None)
+            preview_parts: list[str] = []
+            preview_budget = 8192
+            sys.stdout.write("\n>>> ")
+            async for item in stream:
+                text = item if isinstance(item, str) else str(item)
+                sys.stdout.write(text)
+                if preview_budget > 0:
+                    keep = text[:preview_budget]
+                    preview_parts.append(keep)
+                    preview_budget -= len(keep)
+            sys.stdout.write("\n")
+            if pipeline.tail is not None and preview_parts:
+                pipeline.tail.output_state = "".join(preview_parts)
+        else:
+            result = await pipeline.execute_all(None)
+            sys.stdout.write(f"\n>>> {result}\n")
+
         self.current_pipeline = pipeline
-        sys.stdout.write(f"\n>>> {result}\n")
+
+    def _should_stream_pipeline(self, pipeline: MorphismPipeline) -> bool:
+        mode = self._stream_mode
+        if mode == "on":
+            return True
+        if mode == "off":
+            return False
+        if not config.stream_auto_for_native:
+            return False
+        return any(isinstance(node, NativeCommandNode) for node in pipeline.all_nodes)
+
+    @staticmethod
+    def _normalize_stream_mode(mode: str) -> str:
+        lowered = mode.strip().lower()
+        return lowered if lowered in {"on", "off", "auto"} else "auto"
 
     # ------------------------------------------------------------------
     # Built-in commands
@@ -218,6 +254,22 @@ class MorphismShell(cmd.Cmd):
             out_s = entry["output_schema"]
             in_name = in_s.name if in_s else "None (source)"
             sys.stdout.write(f"  {name:20s}  {in_name} -> {out_s.name}\n")
+
+    def do_stream(self, arg: str) -> None:
+        mode = arg.strip().lower()
+        if not mode:
+            sys.stdout.write(
+                "[Morphism] Stream mode is "
+                f"'{self._stream_mode}' (valid: auto, on, off).\n"
+            )
+            return
+
+        if mode not in {"auto", "on", "off"}:
+            sys.stdout.write("[Morphism] Usage: stream [auto|on|off]\n")
+            return
+
+        self._stream_mode = mode
+        sys.stdout.write(f"[Morphism] Stream mode set to '{self._stream_mode}'.\n")
 
     def do_quit(self, _arg: str) -> bool:
         sys.stdout.write("[Morphism] Goodbye.\n")

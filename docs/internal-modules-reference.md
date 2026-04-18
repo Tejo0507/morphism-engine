@@ -25,6 +25,7 @@ Stability levels:
 | `morphism.core.pipeline` | DAG orchestration, mismatch resolution, runtime execution traversal | `MorphismPipeline.append/add_branch/execute_all/maps_back/maps_forward` | `MorphismPipeline` | `core.node`, `core.cache`, `ai.synthesizer`, `math.z3_verifier`, `exceptions` | CLI layers, tests | stable |
 | `morphism.core.node` | DAG vertex abstraction and execution primitive | `FunctorNode.append_child/execute/execute_stream` | `FunctorNode` | `core.schemas`, `utils.logger` | `core.pipeline`, CLI | stable |
 | `morphism.core.native_node` | Native subprocess stage with dynamic schema inference | `NativeCommandNode.from_command/execute/execute_stream` | `NativeCommandNode` | `core.inference`, `core.node`, `exceptions` | `core.pipeline`, CLI | stable |
+| `morphism.core.transport` | Optional Arrow payload adaptation between nodes | `ArrowPayload`, `adapt_payload_for_child`, `normalize_node_input`, `arrow_available` | `ArrowPayload` | optional `pyarrow`, `config` | `core.pipeline`, `core.node` | stable |
 | `morphism.core.inference` | Output payload classification into schema classes | `infer_schema(data: str) -> Schema` | n/a | `core.schemas`, stdlib `json/csv` | `native_node` | stable |
 | `morphism.core.schemas` | Schema primitives and built-in schema instances | `Schema` dataclass + constants | `Schema` | stdlib | all execution/verification modules | stable |
 | `morphism.core.cache` | SQLite transform cache for synthesized bridges | `FunctorCache.lookup/store/delete/close` | `FunctorCache` | stdlib `sqlite3/hashlib` | `core.pipeline`, CLI TUI cache ownership | stable |
@@ -232,7 +233,7 @@ Public API:
 
 Storage contract:
 
-- SQLite WAL mode table `functors(schema_hash PK, source_name, target_name, lambda_string, timestamp)`.
+- SQLite WAL mode table `functors(schema_hash PK, source_name, target_name, lambda_string, proof_certificate_path, timestamp)`.
 - Default DB path: `.morphism_cache.db` in current working directory.
 
 Invariants:
@@ -278,12 +279,14 @@ Responsibility:
 
 Public API:
 
-- `verify_functor_mapping(source_schema, target_schema, transformation_logic, code_str=None, cfg=None)`.
+- `verify_functor_mapping(source_schema, target_schema, transformation_logic, code_str=None, cfg=None, proof_artifact=None)`.
 
 Guarantees:
 
 - For supported numeric constraints, returns `True` only when no violating model exists.
-- For non-numeric constraints, executes runtime postcondition checks.
+- For supported string constraints, uses Z3 string theory (`z3str3`) to prove/refute constraints.
+- Emits proof certificate metadata (and writes certificate artifact) for each verification attempt.
+- For unsupported constraint/AST combinations, falls back to runtime postcondition checks or fail-closed verifier errors.
 
 Invariants:
 

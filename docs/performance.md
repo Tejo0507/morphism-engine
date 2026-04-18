@@ -30,7 +30,7 @@ $$
 Where:
 
 - $A$ is accepted attempt index, bounded by MORPHISM_MAX_SYNTHESIS_ATTEMPTS.
-- verification includes dry-run checks and solver/runtime postcondition path.
+- verification includes dry-run checks and symbolic solver/runtime postcondition paths.
 
 ### Stage-by-Stage Latency Budget Table
 
@@ -43,7 +43,7 @@ Budgets below are engineering targets for interactive CLI/TUI workloads; tune to
 | Cache lookup (SQLite) | 0.2-2 ms | 2-8 ms | 20 ms | local disk latency and WAL contention | local SSD, short transactions |
 | Compile candidate (eval) | 0.1-1 ms | 1-5 ms | 10 ms | expression complexity | sanitize early, reject quickly |
 | Verification (numeric SMT) | 2-30 ms | 30-200 ms | MORPHISM_Z3_TIMEOUT_MS | constraint and AST complexity | timeout, expression simplification |
-| Verification (runtime fallback) | 0.1-5 ms | 5-20 ms | 50 ms | callable behavior on sample input | deterministic transforms |
+| Verification (runtime fallback for unsupported domains) | 0.1-5 ms | 5-20 ms | 50 ms | callable behavior on sample input | deterministic transforms |
 | Synthesis request | 80-600 ms | 600-2500 ms | MORPHISM_LLM_REQUEST_TIMEOUT | model latency and transport | model size, endpoint locality |
 | Native command execution | workload dependent | workload dependent | command timeout policy | subprocess runtime and IO | shell command design |
 | DAG fan-out coordination | <1 ms/child | <5 ms/child | 20 ms/child | asyncio scheduling and child count | branch width limits |
@@ -105,7 +105,7 @@ Cost centers map directly to core modules and call sites.
 - Cost mode: highest variance and largest tail latency; dominates cold-path cost.
 
 4. Verification
-- Source: verifier dry-run, symbolic encoding, solver check, runtime fallback for non-numeric constraints.
+- Source: verifier dry-run, symbolic encoding (numeric + supported string domains), solver check, runtime fallback for unsupported domains.
 - Cost mode: moderate median, high tail under complex expressions or timeout pressure.
 
 5. Execution
@@ -252,7 +252,7 @@ Constraint complexity controls:
 
 Fallback behavior tuning:
 
-- for non-numeric constraints, runtime postcondition path is used; keep sample execution deterministic and cheap.
+- for unsupported non-symbolic constraints, runtime postcondition path is used; keep sample execution deterministic and cheap.
 - if unknown outcomes rise, reduce expression complexity or raise timeout cautiously after profiling.
 
 ### Batching and Parallelism Boundaries

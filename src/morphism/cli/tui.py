@@ -14,6 +14,7 @@ import logging
 import re
 from typing import Any, Optional
 
+from rich.markup import escape
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -32,6 +33,7 @@ from textual.widgets import (
 from textual.widgets._tree import TreeNode
 
 from morphism.ai.synthesizer import OllamaSynthesizer
+from morphism.config import config
 from morphism.core.cache import FunctorCache
 from morphism.core.native_node import NativeCommandNode
 from morphism.core.node import FunctorNode
@@ -149,6 +151,7 @@ class MorphismApp(App):
         self._log_handler: Optional[_RichLogHandler] = None
         self._cache = FunctorCache()
         self._loading: bool = False
+        self._stream_mode: str = self._normalize_stream_mode(config.stream_mode)
 
     # ── Layout (Horizontal / Vertical — no Grid) ─────────────────────
 
@@ -239,6 +242,9 @@ class MorphismApp(App):
         cmd_input: Input = self.query_one("#cmd-input", Input)
         cmd_input.value = ""
 
+        if self._handle_stream_command(line):
+            return
+
         telemetry: RichLog = self.query_one("#telemetry-log", RichLog)
         telemetry.write(f"\n[bold cyan]> {line}[/bold cyan]")
 
@@ -310,13 +316,72 @@ class MorphismApp(App):
             for seg in segments:
                 await pipeline.append(_make_node(seg))
 
-        result = await pipeline.execute_all(None)
+        telemetry: RichLog = self.query_one("#telemetry-log", RichLog)
+
+        if self._should_stream_pipeline(pipeline):
+            stream = await pipeline.execute_all_stream(None)
+            preview_parts: list[str] = []
+            preview_budget = 8192
+
+            telemetry.write("[bold green]>>> [/bold green]")
+            async for chunk in stream:
+                text = chunk if isinstance(chunk, str) else str(chunk)
+                telemetry.write(escape(text))
+                if preview_budget > 0:
+                    keep = text[:preview_budget]
+                    preview_parts.append(keep)
+                    preview_budget -= len(keep)
+
+            if pipeline.tail is not None and preview_parts:
+                pipeline.tail.output_state = "".join(preview_parts)
+        else:
+            result = await pipeline.execute_all(None)
+            telemetry.write(f"[bold green]>>> {result}[/bold green]")
+
         self._pipeline = pipeline
 
-        telemetry: RichLog = self.query_one("#telemetry-log", RichLog)
-        telemetry.write(f"[bold green]>>> {result}[/bold green]")
-
         self._rebuild_tree()
+
+    def _handle_stream_command(self, line: str) -> bool:
+        stripped = line.strip().lower()
+        if not stripped.startswith("stream"):
+            return False
+
+        telemetry: RichLog = self.query_one("#telemetry-log", RichLog)
+        parts = stripped.split()
+
+        if len(parts) == 1:
+            telemetry.write(
+                "[bold yellow]Stream mode:[/bold yellow] "
+                f"{self._stream_mode} (valid: auto, on, off)"
+            )
+            return True
+
+        mode = parts[1]
+        if mode not in {"auto", "on", "off"}:
+            telemetry.write("[bold red]Usage:[/bold red] stream [auto|on|off]")
+            return True
+
+        self._stream_mode = mode
+        telemetry.write(
+            "[bold green]Stream mode updated:[/bold green] "
+            f"{self._stream_mode}"
+        )
+        return True
+
+    def _should_stream_pipeline(self, pipeline: MorphismPipeline) -> bool:
+        if self._stream_mode == "on":
+            return True
+        if self._stream_mode == "off":
+            return False
+        if not config.stream_auto_for_native:
+            return False
+        return any(isinstance(node, NativeCommandNode) for node in pipeline.all_nodes)
+
+    @staticmethod
+    def _normalize_stream_mode(mode: str) -> str:
+        lowered = mode.strip().lower()
+        return lowered if lowered in {"on", "off", "auto"} else "auto"
 
     # ── DAG tree visualisation ────────────────────────────────────────
 

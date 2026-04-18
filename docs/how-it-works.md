@@ -23,7 +23,7 @@ Stage-by-stage data flow (diagram-friendly):
 | DAG Parse | CLI string with `|` and optional `|+ (...)` | `MorphismPipeline` with `FunctorNode` / `NativeCommandNode`; adjacency via `parents` + `children` | linear append vs branch fan-out; known tool vs native command | root nodes + ordered node list (`all_nodes`) | parse ambiguity, unknown command execution deferred to runtime |
 | Schema Inference | Native command stdout text | `Schema` object (`JSON_Object`, `CSV_Data`, `Plaintext`) | JSON parse success, CSV sniffer heuristic, fallback | concrete `output_schema` for native node | ambiguous data classified as fallback `Plaintext` |
 | Synthesis | source schema + target schema (+ config) | candidate lambda string (`code_str`) + compiled callable (`func`) | cache hit/miss, compile pass/fail, retry loop | bridge candidate | synthesis timeout, invalid lambda syntax, unsafe logic |
-| Verification | `source_schema`, `target_schema`, candidate transform | Z3 constraints + runtime dry-run guard | UNSAT/SAT/unknown, numeric vs non-numeric constraints | `True` (safe) / `False` (unsafe) / exception | `VerificationFailedError`, rejected candidate |
+| Verification | `source_schema`, `target_schema`, candidate transform | Z3 constraints (numeric + string), runtime dry-run guard, proof certificate emission | UNSAT/SAT/unknown, AST support, timeout budget | `True` (safe) / `False` (unsafe) / exception + certificate path | `VerificationFailedError`, rejected candidate |
 | Execution + Caching | DAG + optional bridge insertions | async traversal with node `output_state` snapshots (materialized or streamed) | deferred mismatch resolution at runtime; cache store/evict | final leaf result or async output stream + persisted mapping in SQLite | `EngineExecutionError`, runtime schema mismatch without LLM |
 
 ## Stage-by-Stage Deep Dive
@@ -147,14 +147,15 @@ Latency/cost profile:
 
 What is proven:
 
-- Candidate transform preserves target schema constraints for all inputs satisfying source constraints, when constraints are numeric and representable.
-- For non-numeric constraint domains, Morphism falls back to runtime postcondition checks plus dry-run type guard.
+- Candidate transform preserves target schema constraints for all inputs satisfying source constraints in numeric domains and supported string domains.
+- Supported string domains use Z3 string theory (`z3str3`) with symbolic checks for constraints such as `len(...)`, `contains(...)`, and `regex(...)` (within supported grammar subset).
+- Domains outside the symbolic subset still fail closed to runtime postcondition checks after dry-run.
 
 How SMT constraints are derived:
 
 - Parse source and target constraints from strings of the form `lo <= x <= hi`.
 - Build source-domain constraint over symbolic variable `x`.
-- Translate lambda AST to Z3 expression `y = f(x)` for supported operators/functions.
+- Translate lambda AST to Z3 expression `y = f(x)` for supported numeric or string operators/functions.
 - Assert negation of target postcondition and query solver.
 
 SAT/UNSAT interpretation in user-facing terms:
@@ -198,7 +199,7 @@ Caching mechanics:
 
 - Storage: SQLite file `.morphism_cache.db` in current working directory.
 - Key: SHA-256 of `"{source_name}::{target_name}"`.
-- Value: lambda string plus source/target names + timestamp.
+- Value: lambda string plus source/target names + timestamp (+ proof certificate path metadata).
 
 Invalidation behavior:
 
@@ -265,7 +266,7 @@ Best-effort behavior:
 
 - Native schema inference is heuristic and payload-dependent.
 - LLM synthesis quality depends on model behavior and prompt adherence.
-- Non-numeric constraint spaces rely on runtime postcondition checks rather than full symbolic proof.
+- Unsupported non-symbolic constraint spaces rely on runtime postcondition checks rather than full symbolic proof.
 
 Hard limits and assumptions:
 

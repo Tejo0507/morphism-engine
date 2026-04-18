@@ -208,7 +208,7 @@ Current hooks are implicit via replacement/subclassing. Recommended explicit hoo
 ### Proof and transform artifacts
 
 - Transform cache artifact: `.morphism_cache.db`.
-- Proof outcome currently represented as logs and acceptance/rejection decisions (no standalone proof transcript file).
+- Proof certificate artifacts: JSON transcripts written under `logs/proofs` (configurable via `MORPHISM_PROOF_CERT_DIR`).
 
 ### Debug traces and health signals
 
@@ -235,7 +235,7 @@ Recommended operational health probes:
 | Pipeline | Synthesizer | async generation call | high on misses | aiohttp timeout + retry |
 | Pipeline | Verifier | sync proof check | critical safety gate | Z3 timeout setting |
 | Pipeline | Node execution | async traversal | critical | exception wrapping to `EngineExecutionError` |
-| Native node | OS subprocess | async spawn/communicate | high | process exit code; no per-command timeout yet |
+| Native node | OS subprocess | async spawn/chunked stream | high | process exit code; no per-command timeout yet |
 | Logger | file system/TUI | sync emit | medium | depends on FS and UI responsiveness |
 
 ## Performance Architecture
