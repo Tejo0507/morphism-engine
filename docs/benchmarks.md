@@ -25,7 +25,17 @@ Equivalent module invocation:
 python -m morphism.benchmarks.suite --output-dir benchmarks/results --trials 30
 ```
 
+Render publication-ready PNG charts with matplotlib:
+
+```bash
+python scripts/render_benchmark_plots.py \
+	--results-dir benchmarks/results_publication \
+	--output-dir docs/assets/benchmarks
+```
+
 Artifacts are written under the selected output directory.
+
+Plot outputs are written to `docs/assets/benchmarks` and can be embedded directly in README/papers.
 
 ## Latency Microbenchmark
 

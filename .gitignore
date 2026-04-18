@@ -48,6 +48,7 @@ venv.bak/
 logs/
 *.log
 benchmarks/results/
+benchmarks/results*/
 
 # Explicit exlusions for this repository based on user requirements
 tests/

@@ -364,6 +364,45 @@ Suite outputs:
 
 The latency benchmark compares raw shell piping, Morphism cache-hit latency, and Morphism cold-start latency (synthesis + verification). The dirty-data benchmark downloads Titanic data, corrupts selected fields, demonstrates raw pipeline silent failure, and records Morphism mismatch detection, bridge synthesis, verifier admission, and successful processing.
 
+Publication-grade run (50 trials):
+
+```bash
+morphism-bench --output-dir benchmarks/results_publication --trials 50
+python scripts/render_benchmark_plots.py \
+  --results-dir benchmarks/results_publication \
+  --output-dir docs/assets/benchmarks
+```
+
+### Latest publication pass (50 trials)
+
+Latency microbenchmark (from `benchmarks/results_publication/latency_microbenchmark_summary.json`):
+
+| Scenario | Mean (ms) | Median (ms) | P95 (ms) | Trials |
+|---|---:|---:|---:|---:|
+| Raw Bash Pipe | 205.245 | 204.563 | 243.530 | 50 |
+| Morphism Cache Hit | 13.412 | 13.085 | 17.744 | 50 |
+| Morphism Cold Start (Synthesis + Proof) | 35.928 | 27.620 | 34.472 | 50 |
+
+Dirty-data benchmark summary (Titanic with injected corruption):
+
+| Metric | Value |
+|---|---:|
+| Raw baseline normalized output | 1.000000 |
+| Morphism normalized output | 0.335000 |
+| Ground-truth normalized value | 0.321674 |
+| Raw gap vs truth | 0.678326 |
+| Morphism gap vs truth | 0.013326 |
+
+Interpretation:
+
+- Against the included raw baseline, Morphism cache-hit path is substantially faster in this run.
+- Morphism cold-start path is slower than cache-hit as expected (synthesis + verifier cost), but still far below the measured raw baseline in this environment.
+- On dirty data, the raw baseline silently drifts from truth while Morphism remains close and records mismatch/bridge/proof events.
+
+![Latency Benchmark (50 trials)](docs/assets/benchmarks/latency_microbenchmark_50trials.png)
+
+![Dirty-Data Benchmark (Titanic)](docs/assets/benchmarks/dirty_data_benchmark_titanic.png)
+
 ---
 
 ## Testing
