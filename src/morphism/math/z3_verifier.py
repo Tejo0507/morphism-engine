@@ -67,6 +67,74 @@ _DUMMY_VALUES: dict[str, object] = {
 }
 
 
+class _SandboxViolation(ValueError):
+    """Raised when candidate code violates AST sandbox policy."""
+
+
+class _LLMCodeSandboxVisitor(ast.NodeVisitor):
+    """Strict zero-trust AST gate for generated candidate code."""
+
+    def _reject(self, node: ast.AST, reason: str) -> None:
+        line = getattr(node, "lineno", 1)
+        col = getattr(node, "col_offset", 0) + 1
+        raise _SandboxViolation(f"AST sandbox rejected code at {line}:{col}: {reason}")
+
+    def _qualified_name(self, node: ast.AST) -> str | None:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            base = self._qualified_name(node.value)
+            if base is None:
+                return node.attr
+            return f"{base}.{node.attr}"
+        return None
+
+    def visit_Import(self, node: ast.Import) -> None:  # noqa: N802
+        self._reject(node, "import statements are not allowed")
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:  # noqa: N802
+        self._reject(node, "import statements are not allowed")
+
+    def visit_For(self, node: ast.For) -> None:  # noqa: N802
+        self._reject(node, "for loops are not allowed")
+
+    def visit_AsyncFor(self, node: ast.AsyncFor) -> None:  # noqa: N802
+        self._reject(node, "for loops are not allowed")
+
+    def visit_While(self, node: ast.While) -> None:  # noqa: N802
+        self._reject(node, "while loops are not allowed")
+
+    def visit_comprehension(self, node: ast.comprehension) -> None:  # noqa: N802
+        self._reject(node, "comprehension loops are not allowed")
+
+    def visit_Call(self, node: ast.Call) -> None:  # noqa: N802
+        qname = self._qualified_name(node.func) or ""
+        root = qname.split(".", 1)[0] if qname else ""
+        leaf = qname.rsplit(".", 1)[-1] if qname else ""
+
+        if qname in {"open", "__import__"} or leaf == "open":
+            self._reject(node, "filesystem access is not allowed")
+
+        if qname == "os.system":
+            self._reject(node, "shell/system execution is not allowed")
+
+        if root in {"requests", "urllib"}:
+            self._reject(node, "network calls are not allowed")
+
+        self.generic_visit(node)
+
+
+def enforce_ast_sandbox(code_str: str) -> None:
+    """Parse and validate generated code under strict AST sandbox policy."""
+    try:
+        tree = ast.parse(code_str, mode="exec")
+    except SyntaxError as exc:
+        raise _SandboxViolation(f"AST sandbox parse failed: {exc.msg}") from exc
+
+    visitor = _LLMCodeSandboxVisitor()
+    visitor.visit(tree)
+
+
 def _dry_run_lambda(
     compiled_lambda: Callable,
     source_schema: Schema,
@@ -124,6 +192,38 @@ def verify_functor_mapping(
     verdict = False
     failure_exc: VerificationFailedError | None = None
     failure_reason: str | None = None
+
+    # ── Step -1: AST zero-trust sandbox gate ────────────────────────
+    if code_str is not None:
+        try:
+            enforce_ast_sandbox(code_str)
+        except _SandboxViolation as exc:
+            _log.info(
+                "Z3 SKIPPED: AST sandbox rejected candidate for %s -> %s: %s",
+                source_schema.name,
+                target_schema.name,
+                exc,
+            )
+            failure_reason = str(exc)
+            verdict = False
+            certificate_path = _write_proof_certificate(
+                cfg,
+                source_schema,
+                target_schema,
+                code_str,
+                {
+                    "mode": "sandbox",
+                    "solver_result": "sandbox-reject",
+                    "verdict": verdict,
+                    "failure_reason": failure_reason,
+                },
+            )
+            if proof_artifact is not None:
+                proof_artifact["certificate_path"] = certificate_path
+                proof_artifact["mode"] = "sandbox"
+                proof_artifact["verdict"] = verdict
+                proof_artifact["solver_result"] = "sandbox-reject"
+            return verdict
 
     # ── Step 0: Dry-run type guard ───────────────────────────────────
     if not _dry_run_lambda(transformation_logic, source_schema):

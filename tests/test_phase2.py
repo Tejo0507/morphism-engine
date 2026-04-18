@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from morphism.core.schemas import (
     Int_0_to_100,
     Float_Normalized,
@@ -12,7 +14,11 @@ from morphism.core.schemas import (
     String_NonEmpty,
 )
 from morphism.config import MorphismConfig
-from morphism.math.z3_verifier import verify_functor_mapping, _dry_run_lambda
+from morphism.math.z3_verifier import (
+    _dry_run_lambda,
+    enforce_ast_sandbox,
+    verify_functor_mapping,
+)
 
 
 def test_valid_functor_mapping() -> None:
@@ -84,6 +90,47 @@ def test_verifier_accepts_json_loads_score_lambda() -> None:
         transformation_logic=good_lambda,
     )
     assert result is True
+
+
+def test_ast_sandbox_rejects_import_statements() -> None:
+    with pytest.raises(ValueError, match="import statements"):
+        enforce_ast_sandbox("import requests\nlambda x: x")
+
+
+def test_ast_sandbox_rejects_requests_network_calls() -> None:
+    with pytest.raises(ValueError, match="network calls"):
+        enforce_ast_sandbox("lambda x: requests.get('https://example.com')")
+
+
+def test_ast_sandbox_rejects_open_calls() -> None:
+    with pytest.raises(ValueError, match="filesystem access"):
+        enforce_ast_sandbox("lambda x: open('secret.txt').read()")
+
+
+def test_ast_sandbox_rejects_loop_constructs() -> None:
+    with pytest.raises(ValueError, match="loops"):
+        enforce_ast_sandbox("lambda x: [n for n in [x]]")
+
+    with pytest.raises(ValueError, match="while loops"):
+        enforce_ast_sandbox("while True:\n    pass")
+
+
+def test_verifier_rejects_sandbox_violation_before_solver(tmp_path) -> None:
+    cfg = MorphismConfig(proof_certificate_dir=str(tmp_path), z3_timeout_ms=10000)
+    proof_artifact: dict[str, object] = {}
+
+    result = verify_functor_mapping(
+        source_schema=Int_0_to_100,
+        target_schema=Float_Normalized,
+        transformation_logic=lambda x: x / 100.0,
+        code_str="lambda x: open('secret.txt').read()",
+        cfg=cfg,
+        proof_artifact=proof_artifact,
+    )
+
+    assert result is False
+    assert proof_artifact.get("mode") == "sandbox"
+    assert proof_artifact.get("solver_result") == "sandbox-reject"
 
 
 def test_string_solver_proves_truncation_and_regex(tmp_path) -> None:

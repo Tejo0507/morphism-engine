@@ -242,9 +242,22 @@ class MorphismPipeline:
         tgt = node_b.input_schema
 
         # ── 0. Cache lookup ──────────────────────────────────────────
-        from morphism.math.z3_verifier import verify_functor_mapping
+        from morphism.math.z3_verifier import enforce_ast_sandbox, verify_functor_mapping
 
         cached_code = self.cache.lookup(src.name, tgt.name)
+        if cached_code is not None:
+            try:
+                enforce_ast_sandbox(cached_code)
+            except ValueError as exc:
+                _log.warning(
+                    "Cached lambda failed AST sandbox for %s->%s: %s. Evicting entry.",
+                    src.name,
+                    tgt.name,
+                    exc,
+                )
+                self.cache.delete(src.name, tgt.name)
+                cached_code = None
+
         if cached_code is not None:
             try:
                 func: Callable[[Any], Any] = eval(cached_code, _EVAL_GLOBALS)  # noqa: S307
@@ -283,6 +296,13 @@ class MorphismPipeline:
                 "LLM Synthesising Functor F(%s -> %s)… (attempt %d/%d)",
                 src.name, tgt.name, attempt, max_attempts,
             )
+
+            try:
+                enforce_ast_sandbox(code_str)
+            except ValueError as exc:
+                last_error = exc
+                _log.warning("Rejecting functor (AST sandbox failed): %s", exc)
+                continue
 
             try:
                 func = eval(code_str, _EVAL_GLOBALS)  # noqa: S307
