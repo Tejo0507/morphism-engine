@@ -18,7 +18,7 @@
 
   <rect x="0" y="0" width="1400" height="500" fill="#ffffff"/>
   <text class="headline" x="42" y="56">Morphism Engine</text>
-  <text class="sub" x="42" y="84">Complex data in. Proof-admitted output out.</text>
+  <text class="sub" x="42" y="84">The CLI that proves its work.</text>
 
   <rect class="card" x="42" y="120" width="410" height="300"/>
   <text class="label" x="64" y="154">1) Messy Real Input</text>

@@ -5,10 +5,6 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/readme_tui_preview.svg" alt="Morphism Engine TUI Preview" width="96%" />
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/tests-100%2B%20passing-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
@@ -18,10 +14,8 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#visual-overview">Visual Overview</a> •
-  <a href="#benchmarking">Benchmarks</a> •
-  <a href="#architecture">Architecture</a>
+  <br/>
+  <img src="docs/assets/readme_tui_preview.svg" alt="Morphism Engine TUI Preview" width="96%" />
 </p>
 
 <p align="center">
@@ -33,22 +27,16 @@
 
 ## Table of Contents
 
-- [At a Glance](#at-a-glance)
-- [Problem and Approach](#problem-and-approach)
-- [Visual Overview](#visual-overview)
-- [Input -> Output Snapshot](#input---output-snapshot)
-- [Showcase Preview](#showcase-preview)
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [How It Works (Architecture)](#how-it-works-architecture)
-- [Architecture](#architecture)
-- [Benchmarking](#benchmarking)
-- [Testing](#testing)
-- [Requirements](#requirements)
-- [Acknowledgements](#acknowledgements)
-- [Contact / Maintainer](#contact--maintainer)
-- [License](#license)
+### Choose Your Path
+
+| If You Want To... | Go Here |
+|---|---|
+| Understand the project quickly | [At a Glance](#at-a-glance), [Problem and Approach](#problem-and-approach), [Features](#features) |
+| Understand the internals | [Core Modules](#core-modules), [How It Works (Architecture)](#how-it-works-architecture), [Architecture](#architecture) |
+| See concrete behavior and visuals | [Boundary Repair Walkthrough](#boundary-repair-walkthrough), [Showcase Preview](#showcase-preview), [System Design & Robustness](#system-design--robustness) |
+| Install and run | [Installation](#installation), [Quick Start](#quick-start) |
+| Validate performance and quality | [Benchmarking](#benchmarking), [Testing](#testing) |
+| Check environment and project metadata | [Requirements](#requirements), [Acknowledgements](#acknowledgements), [Contact / Maintainer](#contact--maintainer), [License](#license) |
 
 ---
 
@@ -86,59 +74,10 @@ Local synthesis exists to propose candidate bridges, but correctness comes from 
 
 ---
 
-## Visual Overview
-
-Architecture snapshot:
-
-![Morphism Architecture Overview](docs/assets/architecture_overview.svg)
-
-Performance and robustness snapshots:
-
-<p align="center">
-  <img src="docs/assets/benchmarks/latency_microbenchmark_50trials.png" alt="Latency Benchmark" width="48%" />
-  <img src="docs/assets/benchmarks/dirty_data_benchmark_titanic.png" alt="Dirty Data Benchmark" width="48%" />
-</p>
-
-What these visuals show quickly:
-
-- Architecture context: mismatch detection -> bridge synthesis -> sandbox + verification -> cache -> execution.
-- Latency profile: cache-hit execution is much faster than first-run synthesis/proof path in the included baseline run.
-- Dirty data behavior: Morphism stays close to ground truth while the naive baseline silently drifts.
-
----
-
-## Input -> Output Snapshot
-
-One picture summary of the core workflow:
-
-![Morphism Input Output Snapshot](docs/assets/readme_input_output.svg)
-
-Equivalent command experience:
-
-```text
-cat incidents.ndjson | python -c "...nested risk extraction + fallback..." | render_float
-```
-
-Typical success output:
-
-```text
->>> [RENDERED UI]: 0.9134
-```
-
----
-
-## Showcase Preview
-
-![Morphism Showcase](docs/assets/readme_showcase_promo.svg)
-
-This visual is designed for project pages and social previews: messy input, verifier gate, and trustworthy output in one frame.
-
----
-
 ## Features
 
 - Formal verification using Z3 before bridge insertion.
-- Bounded local synthesis backend for schema mismatch candidates.
+- Bounded local synthesis LLM backend for schema mismatch candidates.
 - Persistent logic caching with SQLite WAL and schema-pair hashing.
 - Interactive TUI interface with DAG topography and live telemetry.
 - Native subprocess integration with runtime schema inference.
@@ -165,6 +104,129 @@ This visual is designed for project pages and social previews: messy input, veri
 | **Reactive Textual TUI** | 3-column layout: searchable Tool Catalog, live DAG Topographer tree, node Inspector, and streaming Telemetry log. |
 | **Intelligent Autocomplete** | Pipe-aware command suggestions that reset after every `\|` token. |
 | **Non-Blocking Execution** | Pipeline runs inside a Textual `@work` worker — the UI never freezes, even during long Ollama calls. |
+
+---
+
+## Core Modules
+
+| Module | Purpose |
+|---|---|
+| `morphism.core.pipeline` | Async DAG executor with `asyncio.gather` fan-out |
+| `morphism.core.node` | `FunctorNode` — DAG vertex with typed schemas |
+| `morphism.core.schemas` | `Schema` dataclass + built-in instances |
+| `morphism.core.cache` | `FunctorCache` — SQLite WAL + SHA-256 keying |
+| `morphism.core.native_node` | `NativeCommandNode` — OS subprocess wrapper |
+| `morphism.core.inference` | Runtime schema inference (JSON / CSV / Plaintext) |
+| `morphism.ai.synthesizer` | Ollama LLM client for bridge functor generation |
+| `morphism.math.z3_verifier` | Z3 SMT proof of generated functors |
+| `morphism.cli.tui` | Textual TUI (recommended interface) |
+| `morphism.cli.shell` | Classic `cmd.Cmd` REPL (fallback) |
+
+---
+
+## How It Works (Architecture)
+
+At a high level, Morphism coordinates five runtime components:
+
+- **UI layer**: REPL (`morphism`) and Textual TUI (`morphism-engine` / `morphism-tui`).
+- **Pipeline core**: typed DAG orchestration (`MorphismPipeline`, `FunctorNode`, `NativeCommandNode`).
+- **Synthesis layer**: LLM candidate generation (`LLMSynthesizer`, Ollama backend, mock backend for deterministic tests).
+- **Verification layer**: Z3-backed proof checks plus runtime postcondition fallback for non-numeric domains.
+- **Persistence layer**: SQLite functor cache keyed by schema-pair hash.
+
+### Data flow
+
+1. Parse pipeline and build graph edges.
+2. Validate schema boundaries at append/runtime.
+3. On mismatch, check cache for existing bridge.
+4. On miss, synthesize candidate transform.
+5. Compile and verify candidate.
+6. If safe, inject bridge and cache it; if not, retry/fail closed.
+7. Execute DAG and expose output plus per-node state.
+
+### Design philosophy
+
+- **Fail closed**: rejected or unverified transforms must never execute.
+- **Trust after proof**: cache hits are revalidated before reuse.
+- **Observability first**: telemetry/logs and node inspection are part of normal operation.
+- **Composable internals**: each layer has a narrow role and explicit contracts.
+
+---
+
+## Architecture
+
+### System architecture (Mermaid)
+
+```mermaid
+graph TB
+  CLI["CLI Layer\nshell.py / tui.py"] --> P["MorphismPipeline\n(core/pipeline.py)"]
+  P --> CHK{"Schema match?"}
+
+  CHK -->|Yes| EX["Execute node / edge\n(core/node.py)"]
+  CHK -->|Pending at build-time| NAT["NativeCommandNode\n(core/native_node.py)"]
+  NAT --> INF["Schema Inference\n(core/inference.py)"]
+  INF --> EX
+
+  CHK -->|Mismatch| CACHE["FunctorCache\n(core/cache.py, SQLite WAL)"]
+  CACHE -->|Cache hit| VER["verify_functor_mapping\n(math/z3_verifier.py)"]
+  CACHE -->|Cache miss| SYN["LLMSynthesizer\n(ai/synthesizer.py)"]
+  SYN --> VER
+
+  VER -->|PASS| BR["Inject AI_Bridge_Functor"]
+  VER -->|FAIL/RETRY| SYN
+  BR --> CACHE
+  BR --> EX
+
+  EX --> OUT["Result (last leaf)\n+ node.output_state history"]
+```
+
+---
+
+## System Design & Robustness
+
+Architecture:
+
+![Morphism Architecture Overview](docs/assets/architecture_overview.svg)
+
+Performance and robustness:
+
+<p align="center">
+  <img src="docs/assets/benchmarks/latency_microbenchmark_50trials.png" alt="Latency Benchmark" width="86%" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/benchmarks/dirty_data_benchmark_titanic.png" alt="Dirty Data Benchmark" width="86%" />
+</p>
+
+What these visuals show quickly:
+
+- Architecture context: mismatch detection -> bridge synthesis -> sandbox + verification -> cache -> execution.
+- Latency profile: cache-hit execution is much faster than first-run synthesis/proof path in the included baseline run.
+- Dirty data behavior: Morphism stays close to ground truth while the naive baseline silently drifts.
+
+---
+
+## Boundary Repair Walkthrough
+
+![Morphism Input Output Snapshot](docs/assets/readme_input_output.svg)
+
+Equivalent command experience:
+
+```text
+cat incidents.ndjson | python -c "...nested risk extraction + fallback..." | render_float
+```
+
+Typical success output:
+
+```text
+>>> [RENDERED UI]: 0.9134
+```
+
+---
+
+## Showcase Preview
+
+![Morphism Showcase](docs/assets/readme_showcase_promo.svg)
 
 ---
 
@@ -238,6 +300,38 @@ echo {"name":"Ada"} | python -c "import sys,json; print(json.load(sys.stdin)['na
 
 Morphism infers `JSON_Object` for the first node and `Plaintext` for the second, auto-bridging as needed.
 
+### Strict schema v1 pinned transform
+
+Problem statement
+
+API contract v1 requires explicit, audited transform logic.
+
+Raw source command(s)
+
+```bash
+python - <<'PY'
+import asyncio
+from morphism.core.node import FunctorNode
+from morphism.core.pipeline import MorphismPipeline
+from morphism.core.schemas import Schema, Float_Normalized, String_NonEmpty
+
+API_V1 = Schema('API_V1_Score', str, 'len(x) > 0')
+source = FunctorNode(API_V1, API_V1, lambda _: '{"schema":"v1","score":70}', 'api_v1_source')
+pinned = FunctorNode(API_V1, Float_Normalized, lambda x: float(__import__('json').loads(x)['score'])/100.0, 'Pinned_v1_Bridge')
+consumer = FunctorNode(Float_Normalized, String_NonEmpty, lambda x: f'[RENDERED UI]: {x}', 'render_float')
+
+p = MorphismPipeline(llm_client=None)
+
+async def run():
+    await p.append(source)
+    await p.append(pinned)
+    await p.append(consumer)
+    print(await p.execute_all(None))
+
+asyncio.run(run())
+PY
+```
+
 ### Advanced edge case: nested JSON + unstructured text to rigorous schema
 
 For a high-leverage example (messy, mixed payload cast into a strict normalized score), see:
@@ -280,77 +374,6 @@ Use `stream auto`, `stream on`, or `stream off` to control execution style.
 - `auto` (default): stream native-heavy pipelines.
 - `on`: force stream mode.
 - `off`: force materialized mode.
-
-## How It Works (Architecture)
-
-At a high level, Morphism coordinates five runtime components:
-
-- **UI layer**: REPL (`morphism`) and Textual TUI (`morphism-engine` / `morphism-tui`).
-- **Pipeline core**: typed DAG orchestration (`MorphismPipeline`, `FunctorNode`, `NativeCommandNode`).
-- **Synthesis layer**: LLM candidate generation (`LLMSynthesizer`, Ollama backend, mock backend for deterministic tests).
-- **Verification layer**: Z3-backed proof checks plus runtime postcondition fallback for non-numeric domains.
-- **Persistence layer**: SQLite functor cache keyed by schema-pair hash.
-
-### Data flow
-
-1. Parse pipeline and build graph edges.
-2. Validate schema boundaries at append/runtime.
-3. On mismatch, check cache for existing bridge.
-4. On miss, synthesize candidate transform.
-5. Compile and verify candidate.
-6. If safe, inject bridge and cache it; if not, retry/fail closed.
-7. Execute DAG and expose output plus per-node state.
-
-### Design philosophy
-
-- **Fail closed**: rejected or unverified transforms must never execute.
-- **Trust after proof**: cache hits are revalidated before reuse.
-- **Observability first**: telemetry/logs and node inspection are part of normal operation.
-- **Composable internals**: each layer has a narrow role and explicit contracts.
-
----
-
-## Architecture
-
-### System architecture (Mermaid)
-
-```mermaid
-graph TB
-  CLI["CLI Layer\nshell.py / tui.py"] --> P["MorphismPipeline\n(core/pipeline.py)"]
-  P --> CHK{"Schema match?"}
-
-  CHK -->|Yes| EX["Execute node / edge\n(core/node.py)"]
-  CHK -->|Pending at build-time| NAT["NativeCommandNode\n(core/native_node.py)"]
-  NAT --> INF["Schema Inference\n(core/inference.py)"]
-  INF --> EX
-
-  CHK -->|Mismatch| CACHE["FunctorCache\n(core/cache.py, SQLite WAL)"]
-  CACHE -->|Cache hit| VER["verify_functor_mapping\n(math/z3_verifier.py)"]
-  CACHE -->|Cache miss| SYN["LLMSynthesizer\n(ai/synthesizer.py)"]
-  SYN --> VER
-
-  VER -->|PASS| BR["Inject AI_Bridge_Functor"]
-  VER -->|FAIL/RETRY| SYN
-  BR --> CACHE
-  BR --> EX
-
-  EX --> OUT["Result (last leaf)\n+ node.output_state history"]
-```
-
-### Key modules
-
-| Module | Purpose |
-|---|---|
-| `morphism.core.pipeline` | Async DAG executor with `asyncio.gather` fan-out |
-| `morphism.core.node` | `FunctorNode` — DAG vertex with typed schemas |
-| `morphism.core.schemas` | `Schema` dataclass + built-in instances |
-| `morphism.core.cache` | `FunctorCache` — SQLite WAL + SHA-256 keying |
-| `morphism.core.native_node` | `NativeCommandNode` — OS subprocess wrapper |
-| `morphism.core.inference` | Runtime schema inference (JSON / CSV / Plaintext) |
-| `morphism.ai.synthesizer` | Ollama LLM client for bridge functor generation |
-| `morphism.math.z3_verifier` | Z3 SMT proof of generated functors |
-| `morphism.cli.tui` | Textual TUI (recommended interface) |
-| `morphism.cli.shell` | Classic `cmd.Cmd` REPL (fallback) |
 
 ---
 
