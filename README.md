@@ -1,15 +1,27 @@
+<h1 align="center">Morphism Engine</h1>
+
 <p align="center">
-  <strong>Morphism Engine</strong><br>
   <em>The CLI that Proves its Work.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-73%20passed-brightgreen" alt="Tests">
+  <img src="docs/assets/readme_tui_preview.svg" alt="Morphism Engine TUI Preview" width="96%" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/tests-100%2B%20passing-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
   <img src="https://img.shields.io/badge/prover-Z3%20SMT-purple" alt="Z3 SMT">
-  <img src="https://img.shields.io/badge/LLM-Ollama-orange" alt="Ollama">
-  <img src="https://img.shields.io/badge/TUI-Textual-cyan" alt="Textual">
+  <img src="https://img.shields.io/badge/synthesis-local%20backend-orange" alt="Local synthesis backend">
+  <img src="https://img.shields.io/badge/interface-REPL%20%2B%20TUI-cyan" alt="REPL and TUI">
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#visual-overview">Visual Overview</a> •
+  <a href="#benchmarking">Benchmarks</a> •
+  <a href="#architecture">Architecture</a>
 </p>
 
 <p align="center">
@@ -21,11 +33,14 @@
 
 ## Table of Contents
 
-- [Description](#description)
+- [At a Glance](#at-a-glance)
+- [Problem and Approach](#problem-and-approach)
+- [Visual Overview](#visual-overview)
+- [Input -> Output Snapshot](#input---output-snapshot)
+- [Showcase Preview](#showcase-preview)
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Visual Overview](#visual-overview)
 - [How It Works (Architecture)](#how-it-works-architecture)
 - [Architecture](#architecture)
 - [Benchmarking](#benchmarking)
@@ -37,22 +52,37 @@
 
 ---
 
-## Description
+## At a Glance
 
-### What problem it solves
+Morphism Engine is for teams that want CLI speed without trust-based guessing.
 
-Morphism solves unsafe boundary composition in CLI/data pipelines. Traditional pipes do not enforce schema compatibility between stages, so invalid transformations are often discovered only at runtime after damage or silent corruption.
+- Typed boundaries with deterministic mismatch detection.
+- Z3-backed verifier gates every synthesized bridge before execution.
+- AST-level sandbox checks run before solver admission.
+- Proof artifacts + SQLite cache make every repair auditable and reusable.
+- REPL and TUI flows stay productive under real data pressure.
 
-### Why it exists
+Why this matters:
 
-It exists to make pipeline composition verifiable, inspectable, and resilient. Instead of relying on ad hoc glue code for every type mismatch, Morphism automates repair and safety checks using a typed DAG model.
+- Traditional pipes are fast but trust-based.
+- Morphism keeps the CLI feel while adding proof-driven correctness gates.
 
-### What makes it unique
+---
 
-- Formal verification gates candidate transforms before execution.
-- LLM synthesis is used as a bounded generation engine, not as a trust boundary.
-- Verified transforms are cached and reused, reducing repeated synthesis cost.
-- Interactive REPL and Textual TUI expose internals (DAG, telemetry, node state) while running.
+## Problem and Approach
+
+Traditional CLI pipes are fast but untyped. A stage can emit malformed or semantically wrong output and downstream steps may still run, producing silent drift or late failures.
+
+Morphism Engine addresses this with a verification-first runtime:
+
+- Every edge is typed (`JSON_Object`, `Float_Normalized`, `Int_0_to_100`, and more).
+- Boundary mismatches are detected deterministically before unsafe execution.
+- Candidate bridge logic is sandbox-checked (AST) and then proven with Z3 constraints.
+- Only verified bridges are admitted; failed proofs are rejected (fail-closed behavior).
+- Proof artifacts are persisted and verified bridges are cached in SQLite for repeatable low-latency runs.
+- REPL and Textual TUI keep the process observable through DAG state, telemetry, and inspection panels.
+
+Local synthesis exists to propose candidate bridges, but correctness comes from the verifier gate, not model output.
 
 ---
 
@@ -71,42 +101,44 @@ Performance and robustness snapshots:
 
 What these visuals show quickly:
 
-- Self-healing flow: detect mismatch -> synthesize bridge -> sandbox + verify -> cache -> execute.
+- Architecture context: mismatch detection -> bridge synthesis -> sandbox + verification -> cache -> execution.
 - Latency profile: cache-hit execution is much faster than first-run synthesis/proof path in the included baseline run.
 - Dirty data behavior: Morphism stays close to ground truth while the naive baseline silently drifts.
 
 ---
 
-## The Problem
+## Input -> Output Snapshot
 
-POSIX pipes (`|`) are **untyped**. When you write:
+One picture summary of the core workflow:
 
-```bash
-cat users.json | tr ',' '\n' | wc -l
+![Morphism Input Output Snapshot](docs/assets/readme_input_output.svg)
+
+Equivalent command experience:
+
+```text
+cat incidents.ndjson | python -c "...nested risk extraction + fallback..." | render_float
 ```
 
-Nothing guarantees the output of `tr` is valid input for `wc -l` in any meaningful sense. One malformed byte and the entire pipeline fails silently — or worse, produces wrong results. There are no schemas, no contracts, and no safety nets.
+Typical success output:
 
-## The Solution
+```text
+>>> [RENDERED UI]: 0.9134
+```
 
-**Morphism Engine** replaces "hope-based piping" with **mathematically guaranteed type safety**.
+---
 
-Every node in a Morphism pipeline carries a **typed schema** (e.g., `Int_0_to_100`, `Float_Normalized`, `JSON_Object`). When two adjacent nodes disagree on types, the engine:
+## Showcase Preview
 
-1. **Detects** the mismatch at link-time.
-2. **Synthesises** a bridge functor using a local **Ollama** LLM.
-3. **Proves** the bridge is safe via the **Z3 SMT theorem prover** — if Z3 can't prove it, the bridge is rejected. No exceptions.
-4. **Caches** the proven functor in a zero-latency **SQLite store** so it's never re-synthesised.
-5. **Executes** the repaired pipeline end-to-end.
+![Morphism Showcase](docs/assets/readme_showcase_promo.svg)
 
-The result: a shell where **every pipe connection is a formally verified morphism** in the category-theoretic sense.
+This visual is designed for project pages and social previews: messy input, verifier gate, and trustworthy output in one frame.
 
 ---
 
 ## Features
 
 - Formal verification using Z3 before bridge insertion.
-- LLM-powered logic synthesis for schema mismatch repair.
+- Bounded local synthesis backend for schema mismatch candidates.
 - Persistent logic caching with SQLite WAL and schema-pair hashing.
 - Interactive TUI interface with DAG topography and live telemetry.
 - Native subprocess integration with runtime schema inference.
@@ -122,7 +154,7 @@ The result: a shell where **every pipe connection is a formally verified morphis
 
 | Feature | Description |
 |---|---|
-| **Self-Healing Pipelines** | Schema mismatches are autonomously repaired by AI synthesis + Z3 proof. |
+| **Adaptive Repair Pipelines** | Schema mismatches are repaired through AI synthesis + verifier approval. |
 | **Dynamic Schema Inference** | Native subprocesses (`echo`, `curl`, `python -c`) get their output schema inferred at runtime — JSON, CSV, or plaintext. |
 | **Zero-Latency Functor Cache** | SQLite WAL-mode cache with SHA-256 keying. A proven bridge is never synthesised twice. |
 | **String SMT Verification** | String-domain transforms can be proven with Z3 string theory (`z3str3`) including regex, length, and token-constraints where representable. |
@@ -156,7 +188,7 @@ This installs three console commands:
 
 ### 2. Pull the Ollama model
 
-The self-healing synthesiser requires a local LLM. Install [Ollama](https://ollama.com), then:
+The adaptive synthesis path requires a local LLM. Install [Ollama](https://ollama.com), then:
 
 ```bash
 ollama pull qwen2.5-coder:1.5b
@@ -206,6 +238,18 @@ echo {"name":"Ada"} | python -c "import sys,json; print(json.load(sys.stdin)['na
 
 Morphism infers `JSON_Object` for the first node and `Plaintext` for the second, auto-bridging as needed.
 
+### Advanced edge case: nested JSON + unstructured text to rigorous schema
+
+For a high-leverage example (messy, mixed payload cast into a strict normalized score), see:
+
+- [docs/examples.md](docs/examples.md) section `EX-16`
+
+This demonstrates:
+
+- mismatch detection on a `JSON_Object -> Float_Normalized` boundary,
+- synthesis of a bridge that handles both nested fields and unstructured fallback text,
+- verification/certificate gate before execution.
+
 ### Stream giant payloads without buffering
 
 For large outputs (multi-GB files, continuous streams), use the streaming API:
@@ -236,8 +280,6 @@ Use `stream auto`, `stream on`, or `stream off` to control execution style.
 - `auto` (default): stream native-heavy pipelines.
 - `on`: force stream mode.
 - `off`: force materialized mode.
-
----
 
 ## How It Works (Architecture)
 
@@ -293,63 +335,6 @@ graph TB
   BR --> EX
 
   EX --> OUT["Result (last leaf)\n+ node.output_state history"]
-```
-
-### System architecture (ASCII)
-
-```
-                        Morphism Engine — Under the Hood
-  ┌─────────────────────────────────────────────────────────────────────┐
-  │                                                                     │
-  │   User Input                                                        │
-  │       │                                                             │
-  │       ▼                                                             │
-  │   ┌─────────┐     ┌──────────────┐     ┌─────────────┐             │
-  │   │  Parse  │────▶│  Link Nodes  │────▶│  Schema     │             │
-  │   │  (| |+) │     │  (DAG build) │     │  Check      │             │
-  │   └─────────┘     └──────────────┘     └──────┬──────┘             │
-  │                                               │                     │
-  │                              ┌────────────────┼────────────────┐    │
-  │                              │  Match?        │  Mismatch?     │    │
-  │                              ▼                ▼                │    │
-  │                         ┌─────────┐    ┌─────────────┐        │    │
-  │                         │  Exec   │    │ Cache Check  │        │    │
-  │                         │  as-is  │    │ (SQLite)     │        │    │
-  │                         └─────────┘    └──────┬──────┘        │    │
-  │                                               │                │    │
-  │                                   ┌───────────┼──────────┐     │    │
-  │                                   │ HIT       │ MISS     │     │    │
-  │                                   ▼           ▼          │     │    │
-  │                             ┌──────────┐ ┌──────────┐    │     │    │
-  │                             │ Load     │ │ AI Synth │    │     │    │
-  │                             │ Cached   │ │ (Ollama) │    │     │    │
-  │                             │ Functor  │ └────┬─────┘    │     │    │
-  │                             └────┬─────┘      │          │     │    │
-  │                                  │            ▼          │     │    │
-  │                                  │      ┌──────────┐     │     │    │
-  │                                  │      │ Z3 Proof │     │     │    │
-  │                                  │      │ (SMT)    │     │     │    │
-  │                                  │      └────┬─────┘     │     │    │
-  │                                  │           │           │     │    │
-  │                                  │    ┌──────┴──────┐    │     │    │
-  │                                  │    │PASS?  FAIL? │    │     │    │
-  │                                  │    ▼       ▼     │    │     │    │
-  │                                  │  Cache   Retry/  │    │     │    │
-  │                                  │  Store   Reject  │    │     │    │
-  │                                  │    │             │    │     │    │
-  │                                  ▼    ▼             │    │     │    │
-  │                            ┌──────────────┐         │    │     │    │
-  │                            │  JIT Execute │         │    │     │    │
-  │                            │  (pipeline)  │         │    │     │    │
-  │                            └──────┬───────┘         │    │     │    │
-  │                                   │                 │    │     │    │
-  │                                   ▼                 │    │     │    │
-  │                              ┌──────────┐           │    │     │    │
-  │                              │  Output  │           │    │     │    │
-  │                              └──────────┘           │    │     │    │
-  │                                                     │    │     │    │
-  │                              ───────────────────────┘────┘─────┘    │
-  └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key modules
@@ -440,7 +425,7 @@ pytest tests/test_phase11_tui.py -v
 pytest tests/test_phase9_10.py -v
 ```
 
-**73 tests** across 8 test files covering schema verification, self-healing synthesis, native subprocess integration, SQLite cache lifecycle, DAG branching, and headless TUI pilot tests.
+**73 tests** across 8 test files covering schema verification, adaptive synthesis, native subprocess integration, SQLite cache lifecycle, DAG branching, and headless TUI pilot tests.
 
 ---
 
@@ -454,6 +439,21 @@ pytest tests/test_phase9_10.py -v
 | requests | ≥ 2.31 | Sync HTTP fallback |
 | textual | ≥ 0.50 | Reactive terminal UI framework |
 | Ollama | latest | Local LLM inference server |
+
+### Hardware Thresholds for local synthesis
+
+The adaptive synthesis path (local `qwen2.5-coder:1.5b` + verifier) is sensitive to host hardware.
+
+| Tier | CPU | RAM | GPU | Disk | Expected Experience |
+|---|---|---:|---|---|---|
+| Minimum usable | 4 cores | 8 GB | none | SSD, 10+ GB free | Works for demos; slower synthesis latency and less headroom for parallel native commands |
+| Recommended dev | 8 cores | 16 GB | optional (6+ GB VRAM) | NVMe SSD, 20+ GB free | Stable interactive use, smoother TUI + synthesis + verification mix |
+| High-throughput local | 12+ cores | 32 GB | 8-12+ GB VRAM | NVMe SSD, 40+ GB free | Better for repeated cold-start benchmarks and concurrent workloads |
+
+Notes:
+
+- Z3 itself is lightweight compared to model inference; most latency/pressure comes from local LLM synthesis.
+- For predictable benchmark runs, close other memory-heavy apps and keep model/runtime versions pinned.
 
 ---
 

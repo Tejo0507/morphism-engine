@@ -15,7 +15,7 @@
   </defs>
 
   <rect x="0" y="0" width="1200" height="460" fill="#f8fafc"/>
-  <text class="t h" x="40" y="40">Morphism Engine: Verified Self-Healing Pipeline Flow</text>
+  <text class="t h" x="40" y="40">Morphism Engine: Verified Adaptive Pipeline Flow</text>
 
   <rect class="box" x="40" y="90" width="170" height="72" fill="#dbeafe"/>
   <text class="t s" x="58" y="122">User Command</text>
@@ -47,16 +47,15 @@
 
   <rect class="box" x="900" y="260" width="230" height="72" fill="#bfdbfe"/>
   <text class="t s" x="952" y="292">Execute Pipeline</text>
-  <text class="t s" x="940" y="312">Typed, Self-Healing Output</text>
+  <text class="t s" x="940" y="312">Typed, Verified Output</text>
 
   <line class="arrow" x1="210" y1="126" x2="250" y2="126"/>
   <line class="arrow" x1="420" y1="126" x2="460" y2="126"/>
-  <line class="arrow" x1="630" y1="126" x2="670" y2="76"/>
-  <line class="arrow" x1="630" y1="126" x2="670" y2="166"/>
-  <line class="arrow" x1="860" y1="76" x2="900" y2="126"/>
-  <line class="arrow" x1="860" y1="166" x2="900" y2="126"/>
+  <line class="arrow" x1="630" y1="112" x2="670" y2="76"/>
+  <line class="arrow" x1="630" y1="140" x2="670" y2="166"/>
+  <line class="arrow" x1="860" y1="76" x2="900" y2="108"/>
+  <line class="arrow" x1="860" y1="166" x2="900" y2="144"/>
   <line class="arrow" x1="1015" y1="162" x2="1015" y2="260"/>
-  <line class="arrow" x1="900" y1="296" x2="860" y2="296"/>
   <line class="arrow" x1="860" y1="296" x2="900" y2="296"/>
 
   <text class="t s" x="52" y="404">Result: fast cache-hit execution after first verified synthesis, with auditable proof artifacts.</text>

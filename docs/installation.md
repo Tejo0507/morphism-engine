@@ -60,6 +60,22 @@ Runtime baseline:
     - `MORPHISM_MAX_SYNTHESIS_ATTEMPTS`
     - `MORPHISM_LOG_LEVEL`
 
+### Hardware Thresholds for Local Self-Healing
+
+The self-healing path uses local model inference (`qwen2.5-coder:1.5b` through Ollama) plus solver checks. In practice, model inference dominates resource pressure.
+
+| Tier | CPU | RAM | GPU | Storage | Operational Expectation |
+|---|---|---:|---|---|---|
+| Minimum usable | 4 logical cores | 8 GB | none required | SSD, 10+ GB free | Runs demos and small pipelines; expect slower synthesis and less concurrency headroom |
+| Recommended developer baseline | 8 logical cores | 16 GB | optional 6+ GB VRAM | NVMe SSD, 20+ GB free | Smooth local REPL/TUI workflows with regular mismatch repair |
+| High-throughput local benchmarking | 12+ logical cores | 32 GB | 8-12+ GB VRAM | NVMe SSD, 40+ GB free | Better consistency for repeated cold-start benchmark runs and parallel workloads |
+
+Practical notes:
+
+- Z3 memory/CPU footprint is usually modest relative to local model inference.
+- If you see high latency variance, profile model inference first, then solver timeout settings.
+- For reproducible benchmark claims, pin model/runtime versions and keep background workloads minimal.
+
 ### Platform Matrix
 
 | Environment | Support Level | Recommended Channel | Notes |

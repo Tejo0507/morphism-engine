@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="500" viewBox="0 0 1400 500" role="img" aria-labelledby="title desc">
+  <title id="title">Morphism Engine Showcase</title>
+  <desc id="desc">Promotional storyboard: messy input, proof gate, trusted output.</desc>
+  <defs>
+    <style>
+      .headline { font-family: Segoe UI, Arial, sans-serif; font-size: 38px; font-weight: 800; fill: #0f172a; }
+      .sub { font-family: Segoe UI, Arial, sans-serif; font-size: 18px; fill: #334155; }
+      .card { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 14; ry: 14; }
+      .label { font-family: Segoe UI, Arial, sans-serif; font-size: 17px; font-weight: 700; fill: #0f172a; }
+      .code { font-family: Consolas, 'Courier New', monospace; font-size: 13px; fill: #1e293b; }
+      .accent { font-family: Segoe UI, Arial, sans-serif; font-size: 15px; font-weight: 700; fill: #0f766e; }
+      .arrow { stroke: #0891b2; stroke-width: 4; marker-end: url(#m); }
+    </style>
+    <marker id="m" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <polygon points="0 0, 12 6, 0 12" fill="#0891b2"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="500" fill="#ffffff"/>
+  <text class="headline" x="42" y="56">Morphism Engine</text>
+  <text class="sub" x="42" y="84">Complex data in. Proof-admitted output out.</text>
+
+  <rect class="card" x="42" y="120" width="410" height="300"/>
+  <text class="label" x="64" y="154">1) Messy Real Input</text>
+  <text class="code" x="64" y="184">{"alerts":[{"risk":{"score":"91.34"}}],</text>
+  <text class="code" x="64" y="208"> "raw":"fallback score=88.1",</text>
+  <text class="code" x="64" y="232"> "meta":{"source":"ocr+api"}}</text>
+  <text class="code" x="64" y="272">cat incidents.ndjson | python -c "..."</text>
+
+  <line class="arrow" x1="460" y1="270" x2="520" y2="270"/>
+
+  <rect class="card" x="530" y="120" width="340" height="300"/>
+  <text class="label" x="552" y="154">2) Gate + Proof</text>
+  <text class="code" x="552" y="188">AST sandbox: pass</text>
+  <text class="code" x="552" y="212">verifier: runtime-pass</text>
+  <text class="code" x="552" y="236">proof artifact: logs/proofs/*.json</text>
+  <text class="accent" x="552" y="276">Bridge admitted only after proof</text>
+  <text class="code" x="552" y="304">cache key: source::target hash</text>
+
+  <line class="arrow" x1="878" y1="270" x2="940" y2="270"/>
+
+  <rect class="card" x="950" y="120" width="408" height="300"/>
+  <text class="label" x="972" y="154">3) Trusted Output</text>
+  <text class="code" x="972" y="194">&gt;&gt;&gt; [RENDERED UI]: 0.9134</text>
+  <text class="code" x="972" y="222">boundary: JSON_Object -&gt; Float_Normalized</text>
+  <text class="accent" x="972" y="264">Repeat runs: cache-first latency</text>
+  <text class="code" x="972" y="300">morphism-bench --trials 50</text>
+</svg>

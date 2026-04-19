@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780" role="img" aria-labelledby="title desc">
+  <title id="title">Morphism Engine Preview</title>
+  <desc id="desc">White-theme TUI preview with complex command chain, proof gate, and runtime telemetry.</desc>
+  <defs>
+    <style>
+      .hero { font-family: Segoe UI, Arial, sans-serif; font-size: 52px; font-weight: 800; fill: #0f172a; }
+      .tag { font-family: Segoe UI, Arial, sans-serif; font-size: 23px; font-weight: 600; fill: #334155; }
+      .shell { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 2; rx: 20; ry: 20; }
+      .pane { fill: #ffffff; stroke: #dbeafe; stroke-width: 2; rx: 12; ry: 12; }
+      .paneTitle { font-family: Segoe UI, Arial, sans-serif; font-size: 19px; font-weight: 700; fill: #0f172a; }
+      .mono { font-family: Consolas, 'Courier New', monospace; font-size: 16px; fill: #1e293b; }
+      .sub { font-family: Segoe UI, Arial, sans-serif; font-size: 17px; font-weight: 700; fill: #0369a1; }
+      .status { font-family: Segoe UI, Arial, sans-serif; font-size: 20px; font-weight: 700; fill: #15803d; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="780" fill="#ffffff"/>
+  <text class="hero" x="46" y="78">Morphism Engine</text>
+  <text class="tag" x="46" y="114">The CLI that Proves its Work.</text>
+
+  <rect class="shell" x="36" y="140" width="1328" height="596"/>
+
+  <rect class="pane" x="62" y="178" width="332" height="492"/>
+  <text class="paneTitle" x="84" y="212">TOOLS / SCHEMAS</text>
+  <text class="mono" x="84" y="248">emit_raw               Int_0_to_100</text>
+  <text class="mono" x="84" y="276">render_float           Float_Normalized</text>
+  <text class="mono" x="84" y="304">python -c parser       Pending</text>
+  <text class="mono" x="84" y="332">python -c enricher     Pending</text>
+  <text class="mono" x="84" y="360">native ingest          JSON_Object</text>
+
+  <rect class="pane" x="412" y="178" width="470" height="492"/>
+  <text class="paneTitle" x="434" y="212">DAG / EXECUTION GRAPH</text>
+  <text class="mono" x="434" y="252">(1) ingest_incidents_ndjson</text>
+  <text class="mono" x="434" y="282">        |</text>
+  <text class="mono" x="434" y="312">(2) Verified_Bridge_Functor</text>
+  <text class="mono" x="434" y="342">        |</text>
+  <text class="mono" x="434" y="372">(3) render_float</text>
+  <text class="mono" x="434" y="402">        |</text>
+  <text class="mono" x="434" y="432">(4) analytics_sink</text>
+
+  <text class="sub" x="434" y="486">Boundary</text>
+  <text class="mono" x="542" y="486">JSON_Object -&gt; Float_Normalized</text>
+  <text class="sub" x="434" y="520">Verifier</text>
+  <text class="mono" x="542" y="520">PASS (proof certificate written)</text>
+  <text class="sub" x="434" y="554">Cache</text>
+  <text class="mono" x="542" y="554">Warm on repeat runs</text>
+
+  <rect class="pane" x="900" y="178" width="438" height="492"/>
+  <text class="paneTitle" x="922" y="212">TELEMETRY</text>
+  <text class="mono" x="922" y="248">[INFO] mismatch detected at boundary</text>
+  <text class="mono" x="922" y="276">[INFO] synthesizing candidate bridge</text>
+  <text class="mono" x="922" y="304">[INFO] AST sandbox accepted</text>
+  <text class="mono" x="922" y="332">[INFO] verifier mode=runtime-pass</text>
+  <text class="mono" x="922" y="360">[INFO] proof artifact persisted</text>
+  <text class="mono" x="922" y="388">[INFO] cache store complete</text>
+  <text class="mono" x="922" y="432">&gt;&gt;&gt; [RENDERED UI]: 0.9134</text>
+  <text class="status" x="922" y="472">Execution Complete</text>
+
+  <rect x="62" y="686" width="1276" height="34" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" rx="8" ry="8"/>
+  <text class="mono" x="84" y="709">Command: cat incidents.ndjson | python -c "nested parse + regex fallback" | render_float | python -c "persist metrics"</text>
+</svg>

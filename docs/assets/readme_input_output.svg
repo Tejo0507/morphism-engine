@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="640" viewBox="0 0 1400 640" role="img" aria-labelledby="title desc">
+  <title id="title">Morphism Engine</title>
+  <desc id="desc">Complex boundary repair example from messy mixed payload to strict normalized output.</desc>
+  <defs>
+    <style>
+      .title { font-family: Segoe UI, Arial, sans-serif; font-size: 36px; font-weight: 800; fill: #0f172a; }
+      .card { stroke: #cbd5e1; stroke-width: 2; rx: 16; ry: 16; }
+      .heading { font-family: Segoe UI, Arial, sans-serif; font-size: 20px; font-weight: 700; fill: #0f172a; }
+      .mono { font-family: Consolas, 'Courier New', monospace; font-size: 14px; fill: #1e293b; }
+      .label { font-family: Segoe UI, Arial, sans-serif; font-size: 14px; font-weight: 700; fill: #0f172a; }
+      .note { font-family: Segoe UI, Arial, sans-serif; font-size: 15px; fill: #334155; }
+      .arrow { stroke: #0891b2; stroke-width: 4; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <polygon points="0 0, 12 6, 0 12" fill="#0891b2" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="640" fill="#ffffff" />
+  <text class="title" x="40" y="58">Morphism Engine</text>
+
+  <rect class="card" x="40" y="98" width="612" height="500" fill="#f8fafc" />
+  <text class="heading" x="70" y="138">Input Payload (complex + noisy boundary)</text>
+
+  <rect x="70" y="158" width="550" height="126" fill="#ffffff" stroke="#dbeafe" stroke-width="1" rx="10" ry="10" />
+  <text class="mono" x="84" y="188">{</text>
+  <text class="mono" x="104" y="212">"incident": {"risk": {"vector": [0.21, 0.67], "score": "91.34"}},</text>
+  <text class="mono" x="104" y="236">"signals": {"ocr": "manual note risk-score=88.1", "geo": "lat:13.07"},</text>
+  <text class="mono" x="104" y="260">"raw": "fallback score=87.0 source=legacy"</text>
+  <text class="mono" x="84" y="282">}</text>
+
+  <text class="label" x="70" y="322">Command</text>
+  <rect x="70" y="332" width="550" height="64" fill="#eef2ff" stroke="#c7d2fe" stroke-width="1" rx="10" ry="10" />
+  <text class="mono" x="84" y="358">cat incidents.ndjson | python -c "nested parse + regex fallback"</text>
+  <text class="mono" x="84" y="380">| render_float</text>
+
+  <rect x="70" y="410" width="550" height="36" fill="#dbeafe" rx="8" ry="8" />
+  <text class="label" x="84" y="434">Detected mismatch</text>
+  <text class="mono" x="242" y="434">JSON_Object -&gt; Float_Normalized</text>
+
+  <rect x="70" y="458" width="550" height="36" fill="#dcfce7" rx="8" ry="8" />
+  <text class="label" x="84" y="482">Admission gate</text>
+  <text class="mono" x="214" y="482">AST sandbox + verifier proof + cache store</text>
+
+  <text class="note" x="70" y="532">Only verified bridges are admitted to execution.</text>
+
+  <line class="arrow" x1="670" y1="338" x2="768" y2="338" />
+
+  <rect class="card" x="782" y="98" width="578" height="500" fill="#f8fafc" />
+  <text class="heading" x="812" y="138">Output (strict normalized schema)</text>
+
+  <rect x="812" y="158" width="520" height="72" fill="#e0f2fe" stroke="#bae6fd" stroke-width="1" rx="10" ry="10" />
+  <text class="mono" x="836" y="200">&gt;&gt;&gt; [RENDERED UI]: 0.9134</text>
+
+  <text class="label" x="812" y="272">Proof metadata</text>
+  <rect x="812" y="282" width="520" height="104" fill="#ffffff" stroke="#dbeafe" stroke-width="1" rx="10" ry="10" />
+  <text class="mono" x="830" y="312">mode: runtime-pass</text>
+  <text class="mono" x="830" y="336">artifact: logs/proofs/proof_*.json</text>
+  <text class="mono" x="830" y="360">cache key: source::target schema hash</text>
+
+  <rect x="812" y="408" width="520" height="142" fill="#f1f5f9" rx="10" ry="10" />
+  <text class="label" x="830" y="440">Result</text>
+  <text class="note" x="898" y="440">Auditable transformation with strict output guarantees</text>
+  <text class="label" x="830" y="472">Next run</text>
+  <text class="note" x="908" y="472">Cache-first execution stays low-latency</text>
+  <text class="note" x="830" y="508">Proof artifact + cache entry make behavior reproducible.</text>
+</svg>

@@ -23,6 +23,7 @@ slug: /examples
 | EX-13 | metrics | strict bounded target verification fail fix | High | Numeric | High | Fails then pass | fail-case |
 | EX-14 | compliance/audit | enterprise-safe policy envelope pipeline | High | JSON | High | Controlled | enterprise |
 | EX-15 | CI automation | non-interactive deterministic batch smoke | High | Mixed | Low | CI optimized | ci |
+| EX-16 | data quality | nested JSON + unstructured fallback to normalized score | High | JSON + Plaintext | High | Cold miss then warm | edge-case |
 
 Notes:
 
@@ -935,6 +936,98 @@ CI_SMOKE_PASS
 9) Production hardening notes
 
 - Archive logs/morphism.log and .morphism_cache.db as CI artifacts for triage.
+
+### EX-16 Nested JSON with unstructured fallback to rigorous normalized schema
+
+1) Problem statement
+
+Producer emits mixed payloads where the preferred score is nested JSON, but fallback score may appear in unstructured text.
+
+2) Raw source command(s)
+
+~~~bash
+python - <<'PY'
+import asyncio
+from morphism.ai.synthesizer import LLMSynthesizer
+from morphism.core.cache import FunctorCache
+from morphism.core.node import FunctorNode
+from morphism.core.pipeline import MorphismPipeline
+from morphism.core.schemas import JSON_Object, Float_Normalized, String_NonEmpty
+
+class EdgeCaseSynth(LLMSynthesizer):
+    async def generate_functor(self, source, target):
+        return (
+            "lambda x: max(0.0, min(1.0, (lambda d: "
+            "((float(d.get('payload', {}).get('risk', {}).get('score')) "
+            "if d.get('payload', {}).get('risk', {}).get('score') not in (None, '') "
+            "else (lambda m: float(m.group(1)) if m else 0.0)"
+            "(re.search(r'score\\s*[:=]\\s*(\\d+(?:\\\\.\\d+)?)', d.get('raw_text', ''))))"
+            "/ 100.0))(json.loads(x))))"
+        )
+
+source = FunctorNode(
+    JSON_Object,
+    JSON_Object,
+    lambda _: '{"payload":{"risk":{"score":"87"}},"raw_text":"backup score=72"}',
+    'mixed_source',
+)
+consumer = FunctorNode(
+    Float_Normalized,
+    String_NonEmpty,
+    lambda x: f'[RENDERED UI]: {x}',
+    'render_float',
+)
+
+p = MorphismPipeline(llm_client=EdgeCaseSynth(), cache=FunctorCache())
+
+async def run():
+    await p.append(source)
+    await p.append(consumer)
+    print(await p.execute_all(None))
+
+asyncio.run(run())
+PY
+~~~
+
+3) Target consumer command(s)
+
+~~~text
+render_float
+~~~
+
+4) Mismatch diagnosis
+
+`JSON_Object -> Float_Normalized` mismatch where score source can vary across structured and unstructured fields.
+
+5) Synthesized transformation sketch
+
+~~~text
+Use nested JSON score when present; otherwise regex fallback from raw text; clamp into [0.0, 1.0].
+~~~
+
+6) Verification result
+
+~~~text
+Mismatch detected -> bridge synthesized -> verifier accepted -> cache stored
+~~~
+
+7) Final working command sequence
+
+~~~text
+mixed_source -> AI_Bridge_Functor -> render_float
+~~~
+
+8) Expected output snippet
+
+~~~text
+[RENDERED UI]: 0.87
+~~~
+
+9) Production hardening notes
+
+- Prefer deterministic field contracts, but keep fallback extraction for resilience.
+- Keep fallback regex narrow and audited to avoid accidental over-capture.
+- Retain proof certificates for regulated data quality workflows.
 
 ## Failure-and-Recovery Cases
 
