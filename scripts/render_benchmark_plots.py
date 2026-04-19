@@ -51,7 +51,7 @@ def _plot_latency(latency_json: dict, output_path: Path) -> None:
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=0, fontsize=10)
     ax.set_ylabel("Latency (ms)", fontsize=11)
-    ax.set_title("Morphism Latency Microbenchmark (50 Trials)", fontsize=14, fontweight="bold")
+    ax.set_title("Morphism Engine Latency Microbenchmark", fontsize=14, fontweight="bold")
     ax.grid(axis="y", linestyle="--", alpha=0.4)
     ax.set_axisbelow(True)
     ax.set_ylim(0, max(means) * 1.2)

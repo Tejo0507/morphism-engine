@@ -25,6 +25,7 @@
 - [Features](#features)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Visual Overview](#visual-overview)
 - [How It Works (Architecture)](#how-it-works-architecture)
 - [Architecture](#architecture)
 - [Benchmarking](#benchmarking)
@@ -52,6 +53,27 @@ It exists to make pipeline composition verifiable, inspectable, and resilient. I
 - LLM synthesis is used as a bounded generation engine, not as a trust boundary.
 - Verified transforms are cached and reused, reducing repeated synthesis cost.
 - Interactive REPL and Textual TUI expose internals (DAG, telemetry, node state) while running.
+
+---
+
+## Visual Overview
+
+Architecture snapshot:
+
+![Morphism Architecture Overview](docs/assets/architecture_overview.svg)
+
+Performance and robustness snapshots:
+
+<p align="center">
+  <img src="docs/assets/benchmarks/latency_microbenchmark_50trials.png" alt="Latency Benchmark" width="48%" />
+  <img src="docs/assets/benchmarks/dirty_data_benchmark_titanic.png" alt="Dirty Data Benchmark" width="48%" />
+</p>
+
+What these visuals show quickly:
+
+- Self-healing flow: detect mismatch -> synthesize bridge -> sandbox + verify -> cache -> execute.
+- Latency profile: cache-hit execution is much faster than first-run synthesis/proof path in the included baseline run.
+- Dirty data behavior: Morphism stays close to ground truth while the naive baseline silently drifts.
 
 ---
 
